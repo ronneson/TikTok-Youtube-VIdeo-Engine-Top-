@@ -1,0 +1,407 @@
+{
+ "title": "Top 5 Curious Heists",
+ "slug": "curious-heists",
+ "format": "portrait",
+ "lang": "en",
+ "theme": "heist",
+ "series": "CURIOUS HEISTS · 01",
+ "caption": "Five real heists that sound made up. Number one is sticky. #heist #history #curious #top5 #truecrime",
+ "hashtags": [
+  "#heist",
+  "#history",
+  "#curious",
+  "#top5"
+ ],
+ "tempo": 1.05,
+ "tail": 2.2,
+ "music": "auto",
+ "announce": "number",
+ "hook": {
+  "lines": [
+   {
+    "text": "Five real heists that sound made up.",
+    "gap_after": 0.35
+   }
+  ],
+  "keyword": "SOUNDS MADE UP",
+  "visual": {
+   "backdrop": "spotlight",
+   "mascot": {
+    "pose": "peek",
+    "costume": "thief"
+   },
+   "props": [
+    "money_bag",
+    "diamond",
+    "cheese_wheel"
+   ]
+  }
+ },
+ "entries": [
+  {
+   "rank": 5,
+   "title": "The Great Cheese Robbery",
+   "place": "London, UK",
+   "year": 2024,
+   "lines": [
+    "In 2024, a scammer posing as a French distributor ordered 22 tonnes of artisan cheddar from a London dairy.",
+    "950 wheels, worth about 300,000 pounds.",
+    {
+     "text": "The dairy delivered. The money never came.",
+     "gap_after": 0.4
+    }
+   ],
+   "stat": {
+    "value": "22 t",
+    "label": "OF CHEDDAR",
+    "at": "22"
+   },
+   "visual": {
+    "backdrop": "warehouse",
+    "props": [
+     {
+      "name": "cheese_wheel",
+      "at": "cheddar",
+      "anim": "drop"
+     },
+     {
+      "name": "truck",
+      "at": "delivered",
+      "anim": "slide"
+     }
+    ],
+    "mascot": {
+     "pose": "think",
+     "costume": "chef"
+    },
+    "keywords": [
+     {
+      "text": "300,000 POUNDS",
+      "at": "300,000"
+     }
+    ],
+    "beats": [
+     {
+      "at": "money",
+      "mascot": {
+       "pose": "facepalm"
+      },
+      "props": [
+       {
+        "name": "money",
+        "anim": "fade"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "rank": 4,
+   "title": "The Mona Lisa Walkout",
+   "place": "Paris, France",
+   "year": 1911,
+   "lines": [
+    "In 1911, a former Louvre worker tucked the Mona Lisa under his smock and walked out.",
+    "Nobody noticed for a day. Police even questioned Picasso.",
+    {
+     "text": "It surfaced two years later, in Florence.",
+     "gap_after": 0.4
+    }
+   ],
+   "stat": {
+    "value": "2 years",
+    "label": "MISSING",
+    "at": "two"
+   },
+   "visual": {
+    "backdrop": "museum",
+    "props": [
+     {
+      "name": "painting",
+      "at": "Mona",
+      "anim": "pop"
+     },
+     {
+      "name": "police",
+      "at": "Police",
+      "anim": "slide"
+     }
+    ],
+    "mascot": {
+     "pose": "sneak",
+     "costume": "thief"
+    },
+    "keywords": [
+     {
+      "text": "NOBODY NOTICED",
+      "at": "Nobody"
+     }
+    ],
+    "beats": [
+     {
+      "at": "Picasso",
+      "mascot": {
+       "pose": "shock"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "rank": 3,
+   "title": "The Antwerp Sandwich",
+   "place": "Antwerp, Belgium",
+   "year": 2003,
+   "lines": [
+    "In 2003, a crew beat 10 layers of security and took over 100 million in diamonds.",
+    "Then they dumped their trash in a forest.",
+    {
+     "text": "A half-eaten sandwich with the leader's DNA got him caught.",
+     "gap_after": 0.4
+    }
+   ],
+   "stat": {
+    "value": "$100M+",
+    "label": "IN DIAMONDS",
+    "at": "100"
+   },
+   "visual": {
+    "backdrop": "vault",
+    "props": [
+     {
+      "name": "vault_door",
+      "at": "security",
+      "anim": "pop"
+     },
+     {
+      "name": "diamond",
+      "at": "diamonds",
+      "anim": "drop"
+     }
+    ],
+    "mascot": {
+     "pose": "sneak",
+     "costume": "thief"
+    },
+    "keywords": [
+     {
+      "text": "10 LAYERS",
+      "at": "10"
+     }
+    ],
+    "beats": [
+     {
+      "at": "forest",
+      "backdrop": "forest",
+      "props": [
+       {
+        "name": "sandwich",
+        "at": "sandwich",
+        "anim": "pop"
+       }
+      ],
+      "mascot": {
+       "pose": "facepalm"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "rank": 2,
+   "title": "The Fake Cop of Tokyo",
+   "place": "Tokyo, Japan",
+   "year": 1968,
+   "lines": [
+    "In 1968, a fake motorcycle cop stopped a bank car in Tokyo, lit a road flare under it, and yelled bomb.",
+    "The guards ran. He drove off with 294 million yen.",
+    {
+     "text": "Never caught.",
+     "gap_after": 0.45
+    }
+   ],
+   "stat": {
+    "value": "¥294M",
+    "label": "GONE",
+    "at": "294"
+   },
+   "visual": {
+    "backdrop": "night_city",
+    "props": [
+     {
+      "name": "motorcycle",
+      "at": "motorcycle",
+      "anim": "slide"
+     },
+     {
+      "name": "car",
+      "at": "car",
+      "anim": "slide"
+     },
+     {
+      "name": "fire",
+      "at": "flare",
+      "anim": "pop"
+     }
+    ],
+    "mascot": {
+     "pose": "point",
+     "costume": "detective"
+    },
+    "keywords": [
+     {
+      "text": "NEVER CAUGHT",
+      "at": "Never"
+     }
+    ],
+    "beats": [
+     {
+      "at": "ran",
+      "mascot": {
+       "pose": "run"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "rank": 1,
+   "title": "The Maple Syrup Heist",
+   "place": "Quebec, Canada",
+   "year": 2012,
+   "lines": [
+    "In 2012, thieves drained 9,500 barrels of maple syrup, worth 18 million dollars, from Canada's strategic reserve.",
+    "Yes, that exists.",
+    "They refilled the barrels with water.",
+    {
+     "text": "An auditor only noticed when he climbed a barrel, and nearly fell in.",
+     "gap_after": 0.5
+    }
+   ],
+   "stat": {
+    "value": "$18M",
+    "label": "OF SYRUP",
+    "at": "18"
+   },
+   "visual": {
+    "backdrop": "warehouse",
+    "props": [
+     {
+      "name": "barrel",
+      "at": "barrels",
+      "anim": "drop"
+     },
+     {
+      "name": "syrup_bottle",
+      "at": "maple",
+      "anim": "pop"
+     }
+    ],
+    "mascot": {
+     "pose": "cheer",
+     "costume": "thief"
+    },
+    "keywords": [
+     {
+      "text": "STRATEGIC RESERVE",
+      "at": "strategic"
+     },
+     {
+      "text": "WATER",
+      "at": "water"
+     }
+    ],
+    "beats": [
+     {
+      "at": "water",
+      "props": [
+       {
+        "name": "water_drop",
+        "anim": "drop"
+       }
+      ],
+      "mascot": {
+       "pose": "shock"
+      }
+     },
+     {
+      "at": "climbed",
+      "props": [
+       "ladder",
+       "barrel"
+      ],
+      "mascot": {
+       "pose": "hide"
+      }
+     }
+    ]
+   },
+   "cues": [
+    [
+     "water$+0.05",
+     "drip",
+     -10
+    ],
+    [
+     "fell$+0.1",
+     "splash",
+     -9
+    ]
+   ]
+  }
+ ],
+ "outro": {
+  "lines": [
+   "Which one would you have pulled off?"
+  ],
+  "visual": {
+   "mascot": {
+    "pose": "wink",
+    "costume": "thief"
+   }
+  }
+ },
+ "sources": [
+  {
+   "claim": "Cheese: over 22 tonnes, 950+ wheels, around £300,000, fraudster posed as distributor for a French retailer, October 2024",
+   "url": "https://www.npr.org/2024/10/29/nx-s1-5169817/cheese-heist-london-neals-yard-dairy"
+  },
+  {
+   "claim": "Cheese: Neal's Yard Dairy statement and Met Police figure (almost £300,000)",
+   "url": "https://www.theguardian.com/uk-news/2024/oct/26/london-cheesemonger-scammed-out-of-22-tonnes-of-artisan-cheddar"
+  },
+  {
+   "claim": "Mona Lisa: stolen Monday 21 Aug 1911 by Vincenzo Peruggia, former Louvre glazier, under his smock; noticed 22 Aug; found in Florence Dec 1913",
+   "url": "https://en.wikipedia.org/wiki/Vincenzo_Peruggia"
+  },
+  {
+   "claim": "Mona Lisa: Apollinaire arrested, Picasso questioned (8 Sept 1911)",
+   "url": "https://www.smithsonianmag.com/history/stealing-mona-lisa-1911-180972178/"
+  },
+  {
+   "claim": "Antwerp 2003: 10 layers of security, 123 of 160 boxes, over $100 million, trash found by August Van Camp, half-eaten sandwich with Notarbartolo's DNA",
+   "url": "https://www.wired.com/2009/03/ff-diamonds-2/"
+  },
+  {
+   "claim": "Antwerp 2003: Guinness entry for the largest diamond heist",
+   "url": "https://www.guinnessworldrecords.com/world-records/largest-diamond-robbery"
+  },
+  {
+   "claim": "Tokyo 10 Dec 1968: fake police officer on motorcycle, bomb claim, flare, 294,307,500 yen, never solved, statute expired 1975",
+   "url": "https://en.wikipedia.org/wiki/300_million_yen_robbery"
+  },
+  {
+   "claim": "Maple syrup: Aug 2011–Jul 2012, 9,571 barrels, C$18.7 million, barrels refilled with water, auditor Michel Gauvreau nearly fell (30 Jul 2012)",
+   "url": "https://www.thecanadianencyclopedia.ca/en/article/great-canadian-maple-syrup-heist"
+  },
+  {
+   "claim": "Maple syrup: Bloomberg Businessweek reportage on the discovery (empty barrel, water)",
+   "url": "https://www.bloomberg.com/news/articles/2013-01-02/the-great-canadian-maple-syrup-heist"
+  },
+  {
+   "claim": "Maple syrup: Vallières sentenced 2017, Supreme Court of Canada fine 2022",
+   "url": "https://www.canlii.org/en/ca/scc/doc/2022/2022scc10/2022scc10.html"
+  }
+ ]
+}

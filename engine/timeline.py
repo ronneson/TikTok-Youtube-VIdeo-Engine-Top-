@@ -123,12 +123,13 @@ def _syllables(word: str) -> int:
 
 def _digits_syll(word: str) -> int:
     d = re.sub(r"\D", '', word)
-    return len(d) * 2 if d else 0
+    return int(round(len(d) * 1.3)) if d else 0
 
 
 def estimate_words(lines_spec: list, wpm: float = 150.0, lead_in: float = 0.35) -> tuple:
     """Verteilt Wortzeiten nach Silben; Satzzeichen geben Pausen. Gibt (Zeilen, Dauer) zurück."""
-    sec_per_syll = 60.0 / (wpm * 1.45)
+    # Kalibriert an Aufnahmen: 194 Wörter (1.094 Zeichen) ergaben 85 s bei 160 wpm espeak; ElevenLabs liegt bei etwa 145-150 wpm inkl. Pausen.
+    sec_per_syll = 60.0 / (wpm * 2.15)
     t = lead_in
     lines = []
     for spec in lines_spec:
@@ -137,16 +138,16 @@ def estimate_words(lines_spec: list, wpm: float = 150.0, lead_in: float = 0.35) 
         toks = S.tokens(spec['text'])
         for i, tok in enumerate(toks):
             syl = _syllables(tok) + _digits_syll(tok)
-            dur = sec_per_syll * syl + 0.05
+            dur = sec_per_syll * syl + 0.03
             w = Word(tok, t, t + dur, ln.id, i)
             ln.words.append(w)
             t += dur
             if tok.endswith(('.', '!', '?')):
-                t += 0.42
+                t += 0.38
             elif tok.endswith((',', ';', ':', '—', '–')):
-                t += 0.18
+                t += 0.16
             else:
-                t += 0.04
+                t += 0.035
         t += ln.gap_after
         lines.append(ln)
     return lines, t
