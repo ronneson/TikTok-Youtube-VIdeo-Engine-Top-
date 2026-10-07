@@ -1,0 +1,8 @@
+skia-python>=138
+numpy>=1.24
+scipy>=1.10
+pillow>=10
+opencv-python-headless>=4.8
+requests>=2.31
+fonttools>=4.40
+pytest>=7

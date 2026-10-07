@@ -84,12 +84,13 @@ def measure_lufs(path: str) -> dict:
     txt = res.stderr
     out = {'lufs': None, 'true_peak': None, 'lra': None}
     import re
-    m = re.search(r"I:\s+(-?[\d.]+) LUFS", txt)
+    # Nur der letzte Treffer zählt: davor stehen Fortschrittszeilen (I: -70.0 LUFS vor der ersten Messung).
+    m = re.findall(r"I:\s+(-?[\d.]+) LUFS", txt)
     if m:
-        out['lufs'] = float(m.group(1))
-    m = re.search(r"LRA:\s+(-?[\d.]+) LU", txt)
+        out['lufs'] = float(m[-1])
+    m = re.findall(r"LRA:\s+(-?[\d.]+) LU", txt)
     if m:
-        out['lra'] = float(m.group(1))
+        out['lra'] = float(m[-1])
     m = re.findall(r"Peak:\s+(-?[\d.]+) dBFS", txt)
     if m:
         out['true_peak'] = float(m[-1])
