@@ -180,23 +180,39 @@ def _trim(a: np.ndarray, thresh: float = 0.01) -> np.ndarray:
 
 
 def _espeak(lines: list, cfg: dict, lang: str = 'en'):
+    """Platzhalterstimme. Mit der espeak-Bibliothek (ctypes) kommen exakte Wortzeiten; sonst CLI und Schätzung."""
     voice = cfg['voice'].get('espeak_voice', 'en-us+m3')
     if lang.startswith('de') and voice.startswith('en'):
         voice = 'de+m3'
     wpm = int(cfg['voice'].get('espeak_wpm', 160))
+    lib = _EspeakLib.get(voice, wpm)
     parts, words, t = [], [], 0.0
     lead = 0.3
     parts.append(np.zeros(int(lead * SR), np.float32))
     t = lead
+    exact = lib is not None
     with tempfile.TemporaryDirectory() as td:
         for ln in lines:
-            p = os.path.join(td, 'l.wav')
-            subprocess.run(['espeak-ng', '-v', voice, '-s', str(wpm), '-p', '45', '-a', '170', '-w', p, ln['text']], check=True, capture_output=True)
-            a, _ = wav.read(p, SR, mono=True)
-            a = _trim(a)
-            d = len(a) / SR
-            for w in _proportional(ln['text'], t, t + d):
-                words.append(w)
+            if lib is not None:
+                a, ev = lib.synth(ln['text'])
+                a = wav.resample(a, lib.rate, SR)
+                lead_cut = _lead_silence(a)
+                a = a[lead_cut:]
+                a = _trim_tail(a)
+                d = len(a) / SR
+                ws = _words_from_events(ln['text'], ev, d, lead_cut / SR)
+                if len(ws) != len(S.tokens(ln['text'])):
+                    ws = _proportional(ln['text'], 0.0, d)
+                for w in ws:
+                    words.append({'w': w['w'], 't0': t + w['t0'], 't1': t + w['t1']})
+            else:
+                p = os.path.join(td, 'l.wav')
+                subprocess.run(['espeak-ng', '-v', voice, '-s', str(wpm), '-p', '45', '-a', '170', '-w', p, ln['text']], check=True, capture_output=True)
+                a, _ = wav.read(p, SR, mono=True)
+                a = _trim(a)
+                d = len(a) / SR
+                for w in _proportional(ln['text'], t, t + d):
+                    words.append(w)
             parts.append(a)
             t += d
             g = 0.28 + float(ln.get('gap_after', 0.0))
@@ -204,4 +220,121 @@ def _espeak(lines: list, cfg: dict, lang: str = 'en'):
             t += g
     audio = np.concatenate(parts)
     audio = audio / (np.max(np.abs(audio)) + 1e-6) * 0.7
-    return audio.astype(np.float32), words, {'espeak_voice': voice, 'placeholder': True}
+    return audio.astype(np.float32), words, {'espeak_voice': voice, 'placeholder': True, 'exact_words': exact}
+
+
+def _lead_silence(a: np.ndarray, thresh: float = 0.01) -> int:
+    idx = np.where(np.abs(a) > thresh)[0]
+    return int(max(0, idx[0] - int(0.02 * SR))) if len(idx) else 0
+
+
+def _trim_tail(a: np.ndarray, thresh: float = 0.01) -> np.ndarray:
+    idx = np.where(np.abs(a) > thresh)[0]
+    return a[:min(len(a), idx[-1] + int(0.06 * SR))] if len(idx) else a
+
+
+def _words_from_events(text: str, events: list, dur: float, shift: float) -> list:
+    """Wort-Ereignisse (Zeichenposition, ms) den Tokens zuordnen. Ein Token beginnt mit seinem ersten Ereignis, endet beim nächsten Token."""
+    toks = S.tokens(text)
+    starts, pos = [], 0
+    for tok in toks:
+        i = text.index(tok, pos)
+        starts.append(i)
+        pos = i + len(tok)
+    first = [None] * len(toks)
+    for (tpos, ms) in events:
+        ci = tpos - 1
+        for k in range(len(toks) - 1, -1, -1):
+            if ci >= starts[k]:
+                if first[k] is None:
+                    first[k] = ms / 1000.0 - shift
+                break
+    out = []
+    for k, tok in enumerate(toks):
+        t0 = first[k]
+        if t0 is None:
+            t0 = out[-1]['t1'] if out else 0.0
+        nxt = next((first[j] for j in range(k + 1, len(toks)) if first[j] is not None), None)
+        t1 = (nxt - 0.04) if nxt is not None else dur
+        t0 = max(0.0, t0)
+        if t1 <= t0:
+            t1 = t0 + 0.08
+        out.append({'w': tok, 't0': t0, 't1': min(t1, dur)})
+    return out
+
+
+class _EspeakLib:
+    """espeak-ng über ctypes mit Wort-Ereignissen (exakte Zeiten). Einmal je Prozess initialisiert."""
+    _inst = None
+    _failed = False
+
+    @classmethod
+    def get(cls, voice: str, wpm: int):
+        if cls._failed:
+            return None
+        if cls._inst is None:
+            try:
+                cls._inst = cls(voice, wpm)
+            except Exception:
+                cls._failed = True
+                return None
+        cls._inst.configure(voice, wpm)
+        return cls._inst
+
+    def __init__(self, voice: str, wpm: int):
+        import ctypes
+        import ctypes.util
+        libname = ctypes.util.find_library('espeak-ng') or ctypes.util.find_library('espeak')
+        if not libname:
+            for cand in ('/opt/homebrew/lib/libespeak-ng.dylib', '/usr/local/lib/libespeak-ng.dylib', '/usr/lib/x86_64-linux-gnu/libespeak-ng.so.1'):
+                if os.path.exists(cand):
+                    libname = cand
+                    break
+        if not libname:
+            raise RuntimeError('libespeak-ng nicht gefunden')
+        self.ct = ctypes
+        self.es = ctypes.CDLL(libname)
+        self.rate = int(self.es.espeak_Initialize(1, 0, None, 0))   # AUDIO_OUTPUT_RETRIEVAL
+        if self.rate <= 0:
+            raise RuntimeError('espeak_Initialize fehlgeschlagen')
+
+        class EVENT(ctypes.Structure):
+            class _ID(ctypes.Union):
+                _fields_ = [('number', ctypes.c_int), ('name', ctypes.c_char_p), ('string', ctypes.c_char * 8)]
+            _fields_ = [('type', ctypes.c_int), ('unique_identifier', ctypes.c_uint), ('text_position', ctypes.c_int),
+                        ('length', ctypes.c_int), ('audio_position', ctypes.c_int), ('sample', ctypes.c_int),
+                        ('user_data', ctypes.c_void_p), ('id', _ID)]
+        self.EVENT = EVENT
+        self.chunks, self.events = [], []
+        CB = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.POINTER(ctypes.c_short), ctypes.c_int, ctypes.POINTER(EVENT))
+
+        def cb(wavp, n, ev):
+            if n > 0 and wavp:
+                self.chunks.append(np.ctypeslib.as_array(wavp, shape=(n,)).copy())
+            i = 0
+            while True:
+                e = ev[i]
+                if e.type == 0:
+                    break
+                if e.type == 1:   # WORD
+                    self.events.append((e.text_position, e.audio_position))
+                i += 1
+            return 0
+        self._cb = CB(cb)
+        self.es.espeak_SetSynthCallback(self._cb)
+        self.voice, self.wpm = None, None
+
+    def configure(self, voice: str, wpm: int):
+        if (voice, wpm) != (self.voice, self.wpm):
+            self.es.espeak_SetVoiceByName(voice.encode('utf-8'))
+            self.es.espeak_SetParameter(1, int(wpm), 0)    # RATE
+            self.es.espeak_SetParameter(3, 45, 0)          # PITCH
+            self.voice, self.wpm = voice, wpm
+
+    def synth(self, text: str):
+        self.chunks, self.events = [], []
+        b = text.encode('utf-8')
+        self.es.espeak_Synth(b, len(b) + 1, 0, 0, 0, 1, None, None)   # espeakCHARS_UTF8
+        self.es.espeak_Synchronize()
+        a = (np.concatenate(self.chunks).astype(np.float32) / 32768.0) if self.chunks else np.zeros(0, np.float32)
+        return a, list(self.events)
