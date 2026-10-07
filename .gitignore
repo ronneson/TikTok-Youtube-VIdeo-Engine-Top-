@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+config/keys/
+projects/*/.render/
+projects/*/check/
+projects/*/raw_voice.wav
+projects/*/*.part.mp4
+library/sfx/*.wav
+library/music/*.wav
+.DS_Store
+*.log

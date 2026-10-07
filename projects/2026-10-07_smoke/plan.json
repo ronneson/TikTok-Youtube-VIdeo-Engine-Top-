@@ -1,0 +1,187 @@
+{
+ "title": "Smoke Test",
+ "format": "portrait",
+ "fps": 30,
+ "duration": 16.912,
+ "voice_source": "espeak",
+ "voice_end": 14.912,
+ "words": 36,
+ "theme": "curious",
+ "scenes": [
+  {
+   "id": "hook",
+   "kind": "hook",
+   "t0": 0.0,
+   "t1": 2.572,
+   "rank": null,
+   "trans_in": "fade",
+   "lines": [
+    "H1"
+   ]
+  },
+  {
+   "id": "E2",
+   "kind": "entry",
+   "t0": 2.572,
+   "t1": 8.038,
+   "rank": 2,
+   "trans_in": "wipe",
+   "lines": [
+    "E2.0",
+    "E2.1",
+    "E2.2"
+   ]
+  },
+  {
+   "id": "E1",
+   "kind": "entry",
+   "t0": 8.038,
+   "t1": 13.181,
+   "rank": 1,
+   "trans_in": "wipe",
+   "lines": [
+    "E1.0",
+    "E1.1",
+    "E1.2"
+   ]
+  },
+  {
+   "id": "outro",
+   "kind": "outro",
+   "t0": 13.181,
+   "t1": 16.912,
+   "rank": null,
+   "trans_in": "fade",
+   "lines": [
+    "O1"
+   ]
+  }
+ ],
+ "lines": [
+  {
+   "id": "H1",
+   "t0": 0.25,
+   "t1": 2.395,
+   "text": "These five heists were too dumb to be fake.",
+   "kind": "hook",
+   "mismatch": false
+  },
+  {
+   "id": "E2.0",
+   "t0": 2.872,
+   "t1": 4.807,
+   "text": "Number two. The Second Thing.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E2.1",
+   "t0": 5.549,
+   "t1": 6.79,
+   "text": "Second sentence here.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E2.2",
+   "t0": 7.284,
+   "t1": 7.888,
+   "text": "And a twist.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.0",
+   "t0": 8.338,
+   "t1": 10.177,
+   "text": "Number one. The First Thing.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E1.1",
+   "t0": 10.927,
+   "t1": 12.03,
+   "text": "First sentence here.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.2",
+   "t0": 12.547,
+   "t1": 13.005,
+   "text": "The payoff.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "O1",
+   "t0": 13.481,
+   "t1": 14.912,
+   "text": "Which one would you have tried?",
+   "kind": "outro",
+   "mismatch": false
+  }
+ ],
+ "cues": [
+  {
+   "t": 0.05,
+   "sfx": "hook_hit",
+   "db": -6,
+   "why": "hook"
+  },
+  {
+   "t": 2.572,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E2"
+  },
+  {
+   "t": 2.902,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 2"
+  },
+  {
+   "t": 8.038,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E1"
+  },
+  {
+   "t": 8.368,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 1"
+  },
+  {
+   "t": 8.398,
+   "sfx": "number_one",
+   "db": -5,
+   "why": "Nummer 1"
+  },
+  {
+   "t": 13.481,
+   "sfx": "outro_chime",
+   "db": -8,
+   "why": "outro"
+  },
+  {
+   "t": 15.162,
+   "sfx": "end_sting",
+   "db": -7,
+   "why": "Schluss"
+  },
+  {
+   "t": 42.0,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E2"
+  }
+ ],
+ "warnings": [
+  "Szene E2 dauert nur 5.5 s (unter 6 s wirkt gehetzt)",
+  "Szene E1 dauert nur 5.1 s (unter 6 s wirkt gehetzt)",
+  "Video nur 16.9 s lang (unter 60 s)"
+ ]
+}

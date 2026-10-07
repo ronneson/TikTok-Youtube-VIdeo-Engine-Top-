@@ -1,0 +1,79 @@
+{
+ "title": "Smoke Test",
+ "slug": "smoke",
+ "format": "portrait",
+ "lang": "en",
+ "theme": "curious",
+ "series": "CURIOUS",
+ "caption": "Five heists too strange to be fiction. #heist #history #curious",
+ "hashtags": [
+  "#curious",
+  "#history",
+  "#top5"
+ ],
+ "tempo": 1.0,
+ "tail": 2.0,
+ "music": "auto",
+ "announce": "number_title",
+ "hook": {
+  "lines": [
+   "These five heists were too dumb to be fake."
+  ],
+  "keyword": "TOO DUMB TO BE FAKE",
+  "visual": {
+   "backdrop": "spotlight"
+  }
+ },
+ "entries": [
+  {
+   "rank": 2,
+   "title": "The Second Thing",
+   "lines": [
+    "Second sentence here.",
+    "And a twist."
+   ],
+   "place": "Somewhere",
+   "year": 2001,
+   "stat": {
+    "value": "42",
+    "label": "UNITS"
+   },
+   "visual": {
+    "backdrop": "night",
+    "props": [
+     "bag"
+    ],
+    "mascot": {
+     "pose": "think",
+     "costume": "default"
+    }
+   }
+  },
+  {
+   "rank": 1,
+   "title": "The First Thing",
+   "lines": [
+    "First sentence here.",
+    "The payoff."
+   ],
+   "visual": {
+    "backdrop": "spotlight",
+    "props": [],
+    "mascot": {
+     "pose": "shock"
+    }
+   }
+  }
+ ],
+ "outro": {
+  "lines": [
+   "Which one would you have tried?"
+  ],
+  "visual": {
+   "mascot": {
+    "pose": "wink"
+   }
+  }
+ },
+ "sources": []
+}
