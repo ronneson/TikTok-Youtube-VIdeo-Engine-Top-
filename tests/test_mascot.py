@@ -129,3 +129,77 @@ def test_draw_head_and_sheet(tmp_path):
     assert 40 < (x1 - x0) < 110 and 40 < (y1 - y0) < 90
     out = mascot.sheet(str(tmp_path / 'mascot_quick.png'), quick=True)
     assert os.path.exists(out) and os.path.getsize(out) > 10000
+
+
+def _white_count(arr):
+    return int((arr[..., 0] > 250).__and__(arr[..., 1] > 250).__and__(arr[..., 2] > 250).sum())
+
+
+def test_lid_coverage_is_linear():
+    """lid_top 0.5 deckt die Hälfte des Augenweißes, 1.0 lässt keinen Rest (kein Geisterring); Unterlid 0.5 ebenso."""
+    def head(**kw):
+        fr = Frame(300, 300); fr.c.fill('#1E1838')
+        mascot.draw_head(fr.c, 150, 150, 240, theme=theme.get('curious'), expr='neutral', mode='color', blink=False, pupil=0.3, **kw)
+        return fr.to_rgb().astype(int)
+    full = _white_count(head(lid_top=0.0))
+    half = _white_count(head(lid_top=0.5))
+    low = _white_count(head(lid_bottom=0.5))
+    assert full > 400
+    assert 0.42 < half / full < 0.58, (half, full)
+    assert 0.42 < low / full < 0.58, (low, full)
+    assert _white_count(head(lid_top=1.0)) == 0
+    # Blinzeln ist weich: Lidanteil steigt monoton und ohne Sprung über die Schließphase
+    vals = [mascot.blink(2.5 + 2.5 * mascot._hash(0, 0) + u, 0) for u in np.arange(0.0, 0.121, 0.01)]
+    assert all(b >= a - 1e-9 for a, b in zip(vals, vals[1:])) and max(np.diff(vals)) < 0.25
+
+
+def _tip_px(size, pose, t, **kw):
+    """Rechteste gezeichnete Spalte (Schnabelspitze) einer Silhouette ohne Rand."""
+    W, H = int(size * 2.5), int(size * 1.9)
+    fr = Frame(W, H); fr.c.fill('#000000')
+    x, y = W / 2, H - size * 0.15
+    mascot.draw(fr.c, x, y, size, t=t, pose=pose, theme=theme.get('curious'), mode='silhouette', color='#FFFFFF', shadow=False, **kw)
+    arr = fr.to_rgb()[..., 0]
+    ys, xs = np.where(arr > 128)
+    x1 = xs.max()
+    col = ys[xs >= x1 - 1]
+    return (x, y), (float(x1), float(col.mean()))
+
+
+def test_anchor_beak_tip_matches_render():
+    """beak_tip aus anchors() liegt auf der gezeichneten Schnabelspitze, auch bei Squash/Hüpfen (cheer) und Atmen."""
+    for pose, t in (('cheer', 0.0), ('cheer', 0.125), ('idle', 0.3), ('shock', 0.1)):
+        (x, y), tip = _tip_px(400, pose, t, seed=0, t0=0.0)
+        a = mascot.anchors(x, y, 400, t=t, pose=pose, seed=0, t0=0.0)['beak_tip']
+        assert abs(a[0] - tip[0]) <= 6 and abs(a[1] - tip[1]) <= 6, (pose, t, a, tip)
+    # Pop und Rotation werden über kw durchgereicht
+    (x, y), tip = _tip_px(400, 'idle', 0.3, k=0.6, rot=12.0)
+    a = mascot.anchors(x, y, 400, t=0.3, pose='idle', k=0.6, rot=12.0)['beak_tip']
+    assert abs(a[0] - tip[0]) <= 8 and abs(a[1] - tip[1]) <= 8, (a, tip)   # Spitze ist 0.02 gerundet (~4 px, mit Pop-Überschwinger mehr)
+
+
+def test_wing_adds_to_silhouette():
+    """STIL.md 2.5: bei 120 px trägt der nahe Flügel in jeder Pose sichtbar zur Silhouette bei (außer peek/hide)."""
+    def sil(pose, **kw):
+        fr = Frame(300, 230); fr.c.fill('#000000')
+        mascot.draw(fr.c, 150, 200, 120, t=0.5, pose=pose, theme=theme.get('curious'), mode='silhouette', color='#FFFFFF', shadow=False, **kw)
+        return fr.to_rgb()[..., 0] > 128
+    for pose in mascot.POSES:
+        if pose in ('peek', 'hide'):
+            continue
+        with_wing = sil(pose)
+        without = sil(pose, visible={'head', 'body', 'tail', 'legs'})
+        extra = int((with_wing & ~without).sum())
+        need = 300 if pose in ('shock', 'cheer', 'fly') else 20     # Flügel frei in der Luft; sonst sichtbare Spitze (run: 40°, ~80 px)
+        assert extra >= need, (pose, extra)
+
+
+def test_bow_and_tools():
+    """bow: Werkzeug-Kostüme nehmen den Hut ab (Flügel vor der Brust), sonst Flügel angelegt; Werkzeuge vor dem Bauch."""
+    assert mascot.state('bow', costume='chef')['wing'] == mascot.WING_HAT
+    assert mascot.state('bow', costume='thief')['wing'] == mascot.WING_BOW
+    assert mascot.state('bow', costume='thief')['body_tilt'] > 5 and mascot.state('bow')['head_tilt'] <= -15
+    assert mascot.state('idle', costume='detective')['wing'] == mascot.WING_TOOL
+    assert mascot.state('idle', costume='default')['wing'] == mascot.WING_REST
+    w = mascot.state('wink', t=0.12, t0=0.0)['lid_near']
+    assert w > 0.99 and 0.0 < mascot.state('wink', t=0.03, t0=0.0)['lid_near'] < 0.99

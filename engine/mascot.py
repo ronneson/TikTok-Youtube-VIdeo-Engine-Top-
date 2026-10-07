@@ -56,7 +56,12 @@ ANCHORS = {'hat': (0.14, -1.00), 'face': (0.24, -0.80), 'neck': (0.08, -0.56), '
 WING_PIVOT = (-0.06, -0.58)
 WING_BACK_PIVOT = (-0.04, -0.60)
 WING_LEN = 0.42
-WING_REST = 5.0                      # Ruhewinkel des nahen Flügels (hängt knapp hinter dem Bauch)
+WING_REST = 30.0                     # Ruhewinkel des nahen Flügels: angelegt, Spitze ragt hinter dem Bauch ~0.05 unter die Körperkontur (Silhouettentest)
+WING_BOW = 25.0                      # bow ohne Hut: Flügel angelegt (STIL.md 2.3)
+WING_HAT = -52.0                     # bow mit Hut: Flügel hält den Hut vor der Brust
+REMOVABLE_HATS = frozenset({'miner', 'explorer', 'historian', 'detective', 'chef'})   # werden in bow abgenommen
+HAND_TOOLS = frozenset({'detective', 'chef'})     # Kostüme mit Werkzeug an der Flügelspitze
+WING_TOOL = -35.0                    # Ruheflügel dieser Kostüme: vor dem Bauch, das Werkzeug wird vor der Brust gehalten
 TAIL_PIVOT = (-0.25, -0.44)
 TAIL_LEN = 0.36
 HEAD_C = (0.14, -0.76)
@@ -144,17 +149,18 @@ def _base_state() -> dict:
     )
 
 
-def _pose_params(pose, t, t0, seed) -> tuple:
-    """Pose-abhängige Parameter als (P, face): P = Körper, face = Mimik-Anpassungen der Pose (nur bei expr=None)."""
+def _pose_params(pose, t, t0, seed, costume='default') -> tuple:
+    """Pose-abhängige Parameter als (P, face): P = Körper, face = Mimik-Anpassungen der Pose (nur bei expr=None).
+    Das Kostüm entscheidet nur in ``bow``, ob ein Hut abgenommen und im Flügel gehalten wird."""
     P = _base_state()
     f = {}
     u = t - t0
     if pose == 'idle':
-        P['head_tilt'] = 6.0 + A.wobble(t, 0.3, 1.5, seed)
+        P['head_tilt'] = 10.0 + A.wobble(t, 0.3, 1.5, seed)
         P['tail_wag'] = 6.0 * A.osc(t, 0.5, seed)
         f['pupil'] = 1.2
-        ph = (t / 1.8) % 3.0                      # jede dritte 1.8-s-Phase zur Kamera
-        P['cam'] = A.smoothstep((ph - 2.0) / 0.2) * (1.0 - A.smoothstep((ph - 2.75) / 0.2))
+        ph = (t / 1.8) % 3.0                      # jede dritte 1.8-s-Phase zur Kamera (Überblendung 350 ms, kein Pop)
+        P['cam'] = A.smootherstep((ph - 1.95) / 0.35) * (1.0 - A.smootherstep((ph - 2.7) / 0.3))
     elif pose == 'point':
         sp = A.spring(u + 0.02, 0.0, 400.0, 12.0)
         P['wing'] = WING_REST - (70.0 + WING_REST) * sp + 2.0 * A.osc(t, 0.5, seed)
@@ -195,7 +201,7 @@ def _pose_params(pose, t, t0, seed) -> tuple:
         P['body_dy'] = -0.03 * abs(math.sin(step))
         P['leg_lift'] = (0.05 * max(0.0, math.sin(step)), 0.05 * max(0.0, -math.sin(step)))
         P['leg_swing'] = (14.0 * math.sin(step), -14.0 * math.sin(step))
-        P['wing'] = -20.0
+        P['wing'] = 30.0                          # Flügel nach hinten geschwungen (Schleichen auf Zehenspitzen)
         P['tail'] = -40.0
         f.update(lid_top=0.5, look=(0.9, 0.0), beak_open=0, brow_l=-6, brow_r=-6, pupil=1.0, cheek=0.0)
     elif pose == 'peek':
@@ -205,12 +211,14 @@ def _pose_params(pose, t, t0, seed) -> tuple:
         P['head_tilt'] = 8.0 + A.wobble(t, 0.3, 2.0, seed)
         P['breathe_amp'] = 0.0
         f.update(pupil=1.4, brow_l=20, brow_r=20, beak_open=4, beak_top_rot=-4, lid_top=0.0, look=(0.0, 0.0), cheek=0.2)
-    elif pose == 'bow':
-        P['wing'] = -52.0
-        P['head_tilt'] = -15.0
+    elif pose == 'bow':                           # Verbeugung: Körper nach vorn, Kopf gesenkt, Flügel angelegt (oder Hut in der Hand)
+        hat = costume in REMOVABLE_HATS
+        P['wing'] = WING_HAT if hat else WING_BOW
+        P['body_tilt'] = 9.0
+        P['head_tilt'] = -20.0
         P['tail'] = -45.0
         P['breathe_hz'] = 0.25
-        P['hat_in_hand'] = True
+        P['hat_in_hand'] = hat
         P['sheen'] = 0.4
         f.update(lid_top=0.6, lid_bottom=0.0, brow_l=4, brow_r=4, beak_open=0, beak_top_rot=0, pupil=1.0, cheek=0.0, look=(0.1, 0.4))
     elif pose == 'cheer':
@@ -231,11 +239,11 @@ def _pose_params(pose, t, t0, seed) -> tuple:
         P['tail'] = -35.0
         f.update(lid_top=0.6, brow_l=-8, brow_r=12, beak_open=2, beak_top_rot=0, pupil=1.0, cheek=0.0, look=(0.0, 0.5))
     elif pose == 'wink':
-        ph = u % 2.6
-        P['lid_near'] = 1.0 if 0.0 <= ph < 0.3 else None
+        ph = u % 2.6                              # Zwinkern 300 ms, Lid mit 60 ms Ease rein und raus (kein Snap)
+        P['lid_near'] = A.smoothstep(ph / 0.06) * (1.0 - A.smoothstep((ph - 0.24) / 0.06))
         P['head_tilt'] = 8.0
         P['head_turn'] = 1.0
-        P['wing'] = -62.0 + 3.0 * A.osc(t, 0.8)
+        P['wing'] = -75.0 + 3.0 * A.osc(t, 0.8)    # Flügel vor dem Bauch, Spitze ragt vorn aus der Kontur
         P['tail'] = -5.0
         f.update(lid_top=0.2, brow_l=18, brow_r=-4, beak_open=6, beak_top_rot=-6, pupil=1.0, cheek=0.3)
     elif pose == 'fly':
@@ -276,7 +284,8 @@ def state(pose='idle', expr=None, t=0.0, look=(0.0, 0.0), seed=0, t0=0.0, respec
     Mimik der Pose. ``kw`` überschreibt einzelne Schlüssel (z. B. head_turn=1, tail=20, lid_top=0.3). Reine Funktion von t."""
     if pose not in POSES:
         pose = 'idle'
-    P, pose_face = _pose_params(pose, float(t), float(t0), seed)
+    costume = kw.pop('costume', 'default')
+    P, pose_face = _pose_params(pose, float(t), float(t0), seed, costume)
     explicit = expr in EXPRESSIONS
     name = expr if explicit else POSE_EXPR.get(pose, 'neutral')
     face = dict(EXPRESSIONS[name])
@@ -297,11 +306,14 @@ def state(pose='idle', expr=None, t=0.0, look=(0.0, 0.0), seed=0, t0=0.0, respec
     if respect:
         P['sheen'] = 0.4 if P['sheen'] is None else P['sheen']
         P['cheek'] = 0.0
+    if costume in HAND_TOOLS and P['wing'] == WING_REST and not P['wing_front']:
+        P['wing'] = WING_TOOL                     # Lupe / Löffel vor der Brust statt hinter dem Rücken
     for k, v in kw.items():
         if k in P:
             P[k] = v
     P['pose'] = pose
     P['expr'] = name
+    P['costume'] = costume
     if P['blink']:
         P['lid_top'] = max(float(P['lid_top']), blink(float(t), seed, P['double_blink']))
     P['breathe'] = _breathe(float(t), P['breathe_hz'], P['breathe_amp'], seed)
@@ -438,6 +450,10 @@ def _eye(g, eu, ev, r, P, th, detail, lid_near=None, alpha=1.0):
     """Auge: Weiß, Pupille mit Glanzpunkt, Ober- und Unterlid in Kopffarbe innerhalb des Augenclips."""
     if alpha <= 0.01:
         return
+    lt = float(P['lid_top']) if lid_near is None else max(float(P['lid_top']), float(lid_near))
+    lb = float(P['lid_bottom'])
+    if lt >= 0.999:                                 # ganz geschlossen: nichts zeichnen (kein Weiß, keine AA-Naht)
+        return
     main, dark, white = th['mascot_main'], th['mascot_dark'], th['line']
     k = r / 0.07
     pr = 0.033 * float(P['pupil']) * k
@@ -448,12 +464,11 @@ def _eye(g, eu, ev, r, P, th, detail, lid_near=None, alpha=1.0):
         g.circle(pu, pv, pr, dark, alpha=alpha)
         if detail and not g.flat:
             g.circle(pu - pr * 0.36, pv - pr * 0.36, 0.011 * k, white, alpha=alpha)
-        lt = float(P['lid_top']) if lid_near is None else max(float(P['lid_top']), float(lid_near))
-        lb = float(P['lid_bottom'])
+        # Lider: Rechteck der Höhe 2r, Unterkante bei ev - r + 2r*lt -> deckt genau den Anteil lid_top von oben
         if lt > 0.001:
-            g.rrect(eu, ev - r + lt * r, 2 * r + 0.02, 2 * r, 0.0, main, alpha=alpha)
-        if lb > 0.001:
-            g.rrect(eu, ev + 2 * r - lb * r, 2 * r + 0.02, 2 * r, 0.0, main, alpha=alpha)
+            g.rrect(eu, ev - 2 * r + 2 * r * lt, 2 * r + 0.02, 2 * r, 0.0, main, alpha=alpha)
+        if lb > 0.001:                              # Unterlid deckt den Anteil lid_bottom von unten
+            g.rrect(eu, ev + 2 * r - 2 * r * lb, 2 * r + 0.02, 2 * r, 0.0, main, alpha=alpha)
 
 
 def _brow(g, eu, ev, angle, col, alpha=0.9):
@@ -514,12 +529,14 @@ def _figure(g, P, th, costume, t, detail=True):
             _head(g, P, th, parts, t, detail, hi_col, hi_alpha)
         if on('wing') and P['wing_front']:                  # Flügel vor dem Gesicht (facepalm): dunklerer Ton hebt ihn vom Kopf ab
             _draw_wing(g, WING_PIVOT, P['wing'], dark if not flat else main, light, sheen, sheen_alpha, detail)
-        if on('wing'):                                      # Kostüm an der Flügelspitze (Lupe, Löffel, Hut in bow)
+        if on('wing'):                                      # Kostüm an der Flügelspitze (Lupe, Löffel; in bow stattdessen der Hut)
             hand = _wing_tip(WING_PIVOT, P['wing'])
             ang = P['wing']
-            for fn in parts.get('hand', []):
-                fn(g, P, hand, ang)
-            if P['hat_in_hand'] and parts.get('removable'):
+            hat_held = bool(P['hat_in_hand'] and parts.get('removable'))
+            if not hat_held:
+                for fn in parts.get('hand', []):
+                    fn(g, P, hand, ang)
+            else:
                 for fn in parts.get('hat', []):
                     with g.tf(rot=ang + 165.0, pivot=hand):
                         with g.tf(du=hand[0] - ANCHORS['hat'][0], dv=hand[1] - ANCHORS['hat'][1] + 0.05):
@@ -554,8 +571,8 @@ def _head(g, P, th, parts, t, detail, hi_col, hi_alpha):
                 if bo > 20 and not g.flat:
                     with g.clip(g.rpoly_path(lower, 0.015)):
                         g.circle(bp[0] + 0.055, bp[1] + 0.055, 0.035, danger)
-            with g.tf(rot=float(P['beak_top_rot']), pivot=bp):
-                g.rpoly([(bp[0], bp[1] - 0.052), (bp[0] + 0.21, bp[1]), (bp[0], bp[1] + 0.025)], 0.02, beak)
+            with g.tf(rot=float(P['beak_top_rot']), pivot=bp):   # Oberschnabel 15 % heller als mascot_beak (~2:1 auf dem Kopf)
+                g.rpoly([(bp[0], bp[1] - 0.052), (bp[0] + 0.21, bp[1]), (bp[0], bp[1] + 0.025)], 0.02, CO.lighten(beak, 0.15))
             # 19-22 Augen (fern dann nah)
             es = float(P['eye_scale'])
             near = (0.24 - 0.05 * turn, -0.80 + hdy)
@@ -584,9 +601,10 @@ def _head(g, P, th, parts, t, detail, hi_col, hi_alpha):
 # ---------------------------------------------------------------------------------------------------------------
 
 def _tool_rot(wing_angle) -> float:
-    """Drehung eines Werkzeugs in der Flügelspitze: entlang des Flügels; hängt der Flügel, wird es schräg nach vorn oben gehalten."""
-    bump = A.smoothstep((wing_angle + 40.0) / 40.0) * (1.0 - A.smoothstep((wing_angle - 20.0) / 40.0))
-    return wing_angle + 90.0 - 125.0 * bump
+    """Drehung eines Werkzeugs in der Flügelspitze (0 = nach rechts): bei gehobenem Flügel (<= -60°) entlang des Flügels,
+    bei hängendem oder vor dem Bauch liegendem Flügel schräg nach vorn oben (-40°), dazwischen weich überblendet."""
+    held = A.smoothstep((wing_angle + 60.0) / 20.0)
+    return (wing_angle + 90.0) * (1.0 - held) - 40.0 * held
 
 
 def _costume_parts(costume, th, t) -> dict:
@@ -604,13 +622,20 @@ def _costume_parts(costume, th, t) -> dict:
         return max(0.0, min(1.0, float(P['head_turn'])))
 
     if costume == 'thief':
-        def mask(g, P):                                   # Domino-Maske, Augen werden darüber gezeichnet
+        def lobe(g, u, v, side):                          # Maskenlappen: Ellipse + spitze Außenecke (Union)
+            e = g.ellipse_path(u, v, 0.12, 0.09)
+            tip = g.rpoly_path([(u + side * 0.04, v - 0.075), (u + side * 0.17, v - 0.025), (u + side * 0.04, v + 0.055)], 0.012)
+            return skia.Op(e, tip, skia.PathOp.kUnion_PathOp)
+        def mask(g, P):                                   # Domino-Maske in accent2 (Tinte wäre 1.1:1); Augen = Schlitze darüber
             tn = turn_of(P)
-            u0 = 0.24 - 0.05 * tn
-            g.rrect(u0 - 0.15, -0.80, 0.32, 0.055, 0.0275, accent2)         # Band um den Kopf
-            g.ellipse(u0, -0.80, 0.09, 0.078, accent2)
-            if tn > 0.01:
-                g.ellipse(u0 - 0.17, -0.80, 0.078, 0.072, accent2, alpha=tn if not g.flat else 1.0)
+            nu, fu, v = 0.24 - 0.05 * tn, 0.05, -0.80
+            with g.clip(g.circle_path(HEAD_C[0], HEAD_C[1], 0.24)):     # Band endet hinter dem Kopf
+                g.rrect(nu - 0.22, v, 0.44, 0.035, 0.0175, accent2)
+            g.path(lobe(g, nu, v, +1), accent2)
+            if tn > 0.01:                                 # frontal: ferner Lappen + Steg über dem Schnabelansatz
+                far = lobe(g, fu, v, -1)
+                bridge = g.rect_path((fu + nu) / 2 - 0.06, v - 0.045, 0.12, 0.07)
+                g.path(skia.Op(far, bridge, skia.PathOp.kUnion_PathOp), accent2, alpha=tn if not g.flat else 1.0)
         def loot(g, P):                                   # Beutel mit Edelstein am Schnabel
             tu, tv = 0.51 - 0.06 * turn_of(P), -0.76
             g.rrect(tu + 0.03, tv + 0.04, 0.06, 0.05, 0.015, wood)
@@ -624,14 +649,18 @@ def _costume_parts(costume, th, t) -> dict:
                 g.circle(hat[0], hat[1] + 0.02, 0.21, accent)
             g.rrect(hat[0] + 0.02, hat[1] + 0.02, 0.44, 0.045, 0.022, accent)
             g.circle(hat[0] + 0.11, hat[1] - 0.09, 0.045, glow if not g.flat else accent)
-        def cone(g, P):                                   # Lichtkegel folgt look (additiv, nur im Farbdurchgang)
-            if g.flat:
+        def cone(g, P):                                   # Lichtkegel folgt look (additiv, Verlauf 0.35 -> 0, nur im Farbdurchgang)
+            if g.flat or P['hat_in_hand']:
                 return
             look = P['look']
             ang = math.degrees(math.atan2(look[1] * 0.5 + 0.12, 1.0 + look[0] * 0.3))
             u, v = hat[0] + 0.11, hat[1] - 0.09
+            L = 0.45
             with g.tf(rot=ang, pivot=(u, v)):
-                g.rpoly([(u + 0.03, v), (u + 0.75, v - 0.16), (u + 0.75, v + 0.22)], 0.02, glow, alpha=0.25, blend='add')
+                x0, y0 = g.P(u + 0.03, v)
+                x1, y1 = g.P(u + L, v)
+                sh = g.c.linear(x0, y0, x1, y1, [(0.0, CO.with_alpha(glow, 0.35)), (1.0, CO.with_alpha(glow, 0.0))])
+                g.rpoly([(u + 0.03, v), (u + L, v - 0.10), (u + L, v + 0.10)], 0.02, None, shader=sh, blend='add')
         def coil(g, P):
             g.circle(-0.20, -0.50, 0.10, wood, stroke=0.045 * g.S)
         parts['hat'] = [helmet]
@@ -639,17 +668,17 @@ def _costume_parts(costume, th, t) -> dict:
         parts['front'] = [cone]
         parts['back'] = [coil]
     elif costume == 'explorer':
-        def pith(g, P):
+        def pith(g, P):                                   # Tropenhelm: Kuppel paper, Krempe wood, schmales Band
             with g.clip(g.rect_path(hat[0] - 0.3, hat[1] - 0.3, 0.6, 0.3 + 0.075)):
                 g.ellipse(hat[0], hat[1] + 0.075, 0.25, 0.20, paper)
-            g.rrect(hat[0] + 0.01, hat[1] + 0.075, 0.46, 0.045, 0.022, paper)
-            g.rrect(hat[0], hat[1] + 0.035, 0.40, 0.04, 0.02, accent2)
-        def binoc(g, P):
-            u, v = neck[0] + 0.06, neck[1] + 0.12
-            g.line(neck[0] - 0.08, neck[1] - 0.02, u, v - 0.02, 0.022, steel)
-            g.rrect(u, v, 0.13, 0.04, 0.02, steel)
-            g.circle(u - 0.045, v + 0.02, 0.045, steel)
-            g.circle(u + 0.045, v + 0.02, 0.045, steel)
+            g.rrect(hat[0] + 0.01, hat[1] + 0.075, 0.48, 0.045, 0.022, wood)
+            g.rrect(hat[0], hat[1] + 0.04, 0.40, 0.03, 0.015, accent2)
+        def binoc(g, P):                                  # Fernglas am Riemen, klar unterhalb des Kragens
+            u, v = 0.15, -0.40
+            g.line(neck[0] - 0.10, neck[1] - 0.01, u, v - 0.03, 0.022, steel)
+            g.rrect(u, v, 0.16, 0.05, 0.02, steel)
+            g.circle(u - 0.055, v + 0.02, 0.05, steel)
+            g.circle(u + 0.055, v + 0.02, 0.05, steel)
         parts['hat'] = [pith]
         parts['removable'] = True
         parts['back'] = [binoc]
@@ -672,10 +701,10 @@ def _costume_parts(costume, th, t) -> dict:
             g.rrect(hat[0] + 0.01, hat[1] - 0.095, 0.26, 0.23, 0.03, ink)
             g.rrect(hat[0] + 0.01, hat[1] + 0.02, 0.40, 0.045, 0.022, ink)
             g.rrect(hat[0] + 0.01, hat[1] - 0.015, 0.26, 0.05, 0.0, accent)
-        def monocle(g, P):
-            eu, ev = (0.05, -0.80) if turn_of(P) > 0.5 else (0.24 - 0.05 * turn_of(P), -0.80)
+        def monocle(g, P):                                # immer am nahen Auge (kein Sprung beim Kamerablick)
+            eu, ev = 0.24 - 0.05 * turn_of(P), -0.80
             g.circle(eu, ev, 0.085, accent, stroke=0.02 * g.S)
-            g.curve([(eu + 0.05, ev + 0.07), (eu + 0.10, ev + 0.17), (neck[0] + 0.04, neck[1] + 0.03)], 0.012, accent)
+            g.curve([(eu + 0.05, ev + 0.07), (eu + 0.10, ev + 0.17), (neck[0] + 0.04, neck[1] + 0.03)], 0.014, accent)
         parts['hat'] = [topper]
         parts['removable'] = True
         parts['front'] = [monocle]
@@ -694,9 +723,14 @@ def _costume_parts(costume, th, t) -> dict:
         parts['face'] = [goggles]
         parts['hat'] = [snorkel]
     elif costume == 'doctor':
-        def mirror(g, P):
-            g.rrect(hat[0], hat[1] + 0.06, 0.44, 0.04, 0.02, steel)
-            g.circle(hat[0] + 0.06, hat[1] + 0.06, 0.06, steel, stroke=0.024 * g.S)
+        def mirror(g, P):                                 # Stirnband über den Brauen, Spiegel mit heller Fläche
+            g.rrect(hat[0], hat[1] + 0.075, 0.36, 0.04, 0.02, steel)
+            mu, mv = hat[0] + 0.02, hat[1] + 0.02
+            g.circle(mu, mv, 0.065, steel, stroke=0.024 * g.S)
+            if not g.flat:
+                g.circle(mu, mv, 0.053, line, alpha=0.6)
+            else:
+                g.circle(mu, mv, 0.053, steel)
         def stetho(g, P):
             g.curve([(neck[0] - 0.16, neck[1] + 0.00), (neck[0] - 0.04, neck[1] + 0.08), (neck[0] + 0.12, neck[1] + 0.04), (neck[0] + 0.16, neck[1] + 0.18)], 0.024, steel)
             g.circle(neck[0] + 0.17, neck[1] + 0.22, 0.05, steel)
@@ -751,10 +785,30 @@ def costume_for(theme_name: str) -> str:
 
 
 def anchors(x, y, size, t=0.0, pose='idle', flip=False, seed=0, t0=0.0, expr=None, look=(0.0, 0.0), **kw) -> dict:
-    """Pixelpositionen der Anker hat, face, neck, back, beak_tip, hand, top und floor zur Zeit t (ohne Pop/rot)."""
+    """Pixelpositionen der Anker hat, face, neck, back, beak_tip, hand, top und floor zur Zeit t.
+    Rechnet mit derselben Transformation wie draw(): Atmen, Squash (body_sy), Shake, Pop ``k`` und ``rot`` (beide über kw),
+    ``costume`` (Flügel in bow), Oberschnabel-Drehung für beak_tip. Props an diesen Punkten sitzen damit bildgenau."""
+    k = float(kw.pop('k', 1.0))
+    rot = float(kw.pop('rot', 0.0))
+    if flip:
+        look = (-float(look[0]), float(look[1]))
     P = state(pose, expr, t, look, seed, t0, **kw)
     S = float(size)
     sgn = -1.0 if flip else 1.0
+    if k < 1.0:
+        sc, rot_pop = A.out_back(k, s=2.2), -6.0 * (1.0 - k)
+    else:
+        sc, rot_pop = k, 0.0
+    sc *= P['breathe']
+    sy = float(P['body_sy'])
+    sx = 1.0 / math.sqrt(sy) if sy > 0 else 1.0
+    shx, shy = P['shake']
+    ca, sa = math.cos(math.radians(rot + rot_pop)), math.sin(math.radians(rot + rot_pop))
+
+    def px(pu, pv):
+        X, Y = sgn * pu * S * sx * sc, pv * S * sy * sc
+        return (x + shx + X * ca - Y * sa, y + shy + X * sa + Y * ca)
+
     tilt = math.radians(P['body_tilt'] + P['body_jitter'])
     htilt = math.radians(-P['head_tilt'])
     hip = (0.0, -0.19 - P['lift'])
@@ -771,18 +825,19 @@ def anchors(x, y, size, t=0.0, pose='idle', flip=False, seed=0, t0=0.0, expr=Non
         return body(NECK[0] + du * cs - dvv * sn, NECK[1] + du * sn + dvv * cs)
 
     turn = max(0.0, min(1.0, float(P['head_turn'])))
+    hdy = float(P['head_dy'])
     out = {}
-    for k, (u, v) in ANCHORS.items():
-        if k in ('hat', 'face', 'beak_tip'):
-            uu = u - (0.06 * turn if k == 'beak_tip' else 0.05 * turn if k == 'face' else 0.0)
-            pu, pv = head(uu, v + P['head_dy'])
+    for name, (u, v) in ANCHORS.items():
+        if name == 'beak_tip':                            # Spitze des Oberschnabels, um beak_top_rot gedreht
+            bu, bv = 0.35 - 0.06 * turn, -0.77 + hdy
+            a = math.radians(float(P['beak_top_rot']))
+            out[name] = px(*head(bu + 0.21 * math.cos(a), bv + 0.21 * math.sin(a)))
+        elif name in ('hat', 'face'):
+            out[name] = px(*head(u - (0.05 * turn if name == 'face' else 0.0), v + hdy))
         else:
-            pu, pv = body(u, v)
-        out[k] = (x + sgn * pu * S, y + pv * S)
-    hu, hv = body(*_wing_tip(WING_PIVOT, P['wing']))
-    out['hand'] = (x + sgn * hu * S, y + hv * S)
-    tu, tv = head(0.14, -1.0)
-    out['top'] = (x + sgn * tu * S, y + tv * S)
+            out[name] = px(*body(u, v))
+    out['hand'] = px(*body(*_wing_tip(WING_PIVOT, P['wing'])))
+    out['top'] = px(*head(0.14, -1.0 + hdy))
     out['floor'] = (float(x), float(y))
     return out
 
@@ -803,7 +858,7 @@ def draw(c, x, y, size, t=0.0, pose='idle', expr=None, costume='default', look=(
         return
     if flip:
         look = (-float(look[0]), float(look[1]))
-    P = state(pose, expr, t, look, seed, t0, respect=bool(th.get('respect_mode')), **kw)
+    P = state(pose, expr, t, look, seed, t0, respect=bool(th.get('respect_mode')), costume=costume, **kw)
     S = float(size)
     detail = S >= DETAIL_MIN
     if k < 1.0:
@@ -865,9 +920,9 @@ def draw_head(c, cx, cy, d, t=0.0, expr='smile', look=(0.0, 0.0), theme=None, co
 # ---------------------------------------------------------------------------------------------------------------
 
 def sheet(out_path: str, quick: bool = False) -> str:
-    """Rendert den Bogen: Posen x Kostüme (beschriftet), eine Zeile mit allen Ausdrücken, Bewegungszeilen mit sechs
-    Zeitpunkten (cheer, run), Größentest 420 / 240 / 140 / 120 / Kopf 44 px, Flip, Pop, Silhouette, Rand, und der
-    120-px-Silhouettentest aller Posen. quick=True rendert einen kleinen Ausschnitt (Tests)."""
+    """Rendert den Bogen: Posen x Kostüme (beschriftet, Zellen geclippt), eine Zeile mit allen Ausdrücken, Bewegungszeilen
+    mit sechs Zeitpunkten (cheer, run, fly mit Smear-Referenz), Größentest 420 / 240 / 140 / 120 / Kopf 44 px, Flip, Pop,
+    Silhouette, Rand, und der 120-px-Silhouettentest aller Posen. quick=True rendert einen kleinen Ausschnitt (Tests)."""
     from .canvas import Frame
     poses = POSES if not quick else ['idle', 'point', 'cheer']
     costumes = COSTUMES if not quick else ['default', 'thief']
@@ -875,7 +930,7 @@ def sheet(out_path: str, quick: bool = False) -> str:
     row_h, size_h, sil_h = 420, 520, 260
     W = lx + cw * len(costumes) + 40
     grid_h = chh * len(poses)
-    H = top + grid_h + 40 + row_h * 3 + 40 + size_h + 40 + sil_h + 60
+    H = top + grid_h + 40 + row_h * 4 + 40 + size_h + 40 + sil_h + 60
     fr = Frame(W, H)
     c = fr.c
     base = TH.get('curious')
@@ -901,16 +956,16 @@ def sheet(out_path: str, quick: bool = False) -> str:
             cell_bg(x0 + 6, y0 + 6, cw - 12, chh - 12, th)
             t = 0.35 + 0.17 * i + 0.11 * j
             cx = x0 + cw / 2 - 10
-            if po == 'peek':
-                with c.clip_rect(x0 + 6, y0 + 6, cw - 12, chh - 12, 24):
+            with c.clip_rect(x0 + 6, y0 + 6, cw - 12, chh - 12, 24):      # nichts spillt in die Nachbarzelle
+                if po == 'peek':
                     draw(c, cx + 10, y0 + chh + 0.55 * sz, sz, t, po, None, co, theme=th)
-            elif po == 'hide':
-                fy = y0 + chh - 40
-                draw(c, cx, fy, sz, t, po, None, co, theme=th)
-                c.rect_c(cx + 0.12 * sz, fy - 0.36 * sz, 0.78 * sz, 0.72 * sz, th['bg2'], r=18)
-            else:
-                lk = (0.5, 0.1) if po in ('idle', 'point') else (0.0, 0.0)
-                draw(c, cx, y0 + chh - 44, sz, t, po, None, co, theme=th, look=lk, t0=t - 0.12 if po == 'wink' else 0.0)
+                elif po == 'hide':
+                    fy = y0 + chh - 40
+                    draw(c, cx, fy, sz, t, po, None, co, theme=th)
+                    c.rect_c(cx + 0.12 * sz, fy - 0.36 * sz, 0.78 * sz, 0.72 * sz, th['bg2'], r=18)
+                else:
+                    lk = (0.5, 0.1) if po in ('idle', 'point') else (0.0, 0.0)
+                    draw(c, cx, y0 + chh - 44, sz, t, po, None, co, theme=th, look=lk, t0=t - 0.12 if po == 'wink' else 0.0)
     y = top + grid_h + 40
     c.text('AUSDRÜCKE (idle, head_turn 1, kostüm default)', 40, y + 18, f_lab, base['ink_soft'])
     ew = (W - 80) / len(EXPRS)
@@ -920,15 +975,25 @@ def sheet(out_path: str, quick: bool = False) -> str:
         draw(c, x0 + ew / 2 - 10, y + row_h - 60, 250, 1.3, 'idle', ex, 'default', theme=base, head_turn=1.0)
         c.text(ex, x0 + ew / 2, y + row_h - 34, f_lab, base['accent'], 'center', 'middle')
     y += row_h
-    for po, th_name, times in (('cheer', 'heist', [0.0, 0.05, 0.10, 0.15, 0.20, 0.25]), ('run', 'crime', [0.0, 0.04, 0.08, 0.12, 0.16, 0.20])):
-        th = TH.get(th_name)                                # Bewegung: 6 Zeitpunkte
-        c.text(f'BEWEGUNG {po} · t = ' + ', '.join(f'{v:.2f}' for v in times) + ' s', 40, y + 18, f_lab, base['ink_soft'])
+    motion = (('cheer', 'heist', [0.0, 0.05, 0.10, 0.15, 0.20, 0.25], None),
+              ('run', 'crime', [0.0, 0.04, 0.08, 0.12, 0.16, 0.20], None),
+              ('fly', 'space', [0.0, 0.03, 0.06, 0.08, 0.11, 0.14], 1.4))
+    for po, th_name, times, smear in motion:               # Bewegung: 6 Zeitpunkte (fly: letzte Zelle mit Smear 1.4x)
+        th = TH.get(th_name)
+        label = f'BEWEGUNG {po} · t = ' + ', '.join(f'{v:.2f}' for v in times) + ' s' + (f' · letzte Zelle smear sx {smear}' if smear else '')
+        c.text(label, 40, y + 18, f_lab, base['ink_soft'])
         mw = (W - 80) / 6
         for i, tt in enumerate(times):
             x0 = 40 + i * mw
             cell_bg(x0 + 4, y + 40, mw - 8, row_h - 60, th)
-            draw(c, x0 + mw / 2 - 10, y + row_h - 70, 240, tt, po, None, THEME_COSTUME[th_name], theme=th)
-            c.text(f't={tt:.2f}', x0 + mw / 2, y + row_h - 34, f_small, th['ink_soft'], 'center', 'middle')
+            fx_, fy_ = x0 + mw / 2 - 10, y + row_h - 70
+            with c.clip_rect(x0 + 4, y + 40, mw - 8, row_h - 60, 24):
+                if smear and i == len(times) - 1:
+                    with c.tf(sx=smear, sy=1.0, px=fx_, py=fy_ - 0.5 * 240):
+                        draw(c, fx_, fy_, 240, tt, po, None, THEME_COSTUME[th_name], theme=th)
+                else:
+                    draw(c, fx_, fy_, 240, tt, po, None, THEME_COSTUME[th_name], theme=th)
+            c.text(f't={tt:.2f}' + (' smear' if smear and i == len(times) - 1 else ''), x0 + mw / 2, y + row_h - 34, f_small, th['ink_soft'], 'center', 'middle')
         y += row_h
     th = base                                               # Größen und Modi
     c.text('GRÖSSEN 420 · 240 · 140 · 120 · kopf 44 (wasserzeichen) · flip · pop k 0.5 · silhouette · rim', 40, y + 18, f_lab, base['ink_soft'])
@@ -942,13 +1007,13 @@ def sheet(out_path: str, quick: bool = False) -> str:
     xx += 140
     draw_head(c, xx, by - 40, 44, 0.9, 'smile', theme=th)
     c.text('44', xx, by, f_small, th['ink_soft'], 'center', 'middle')
-    xx += 160
+    xx += 190
     draw(c, xx, by, 240, 0.9, 'point', None, 'thief', theme=TH.get('heist'), flip=True, look=(-0.6, 0.0))
-    xx += 260
+    xx += 320
     draw(c, xx, by, 240, 0.9, 'idle', None, 'default', theme=th, k=0.5)
-    xx += 230
-    draw(c, xx, by, 240, 0.9, 'point', None, 'default', theme=th, mode='silhouette', color=th['ink'])
     xx += 250
+    draw(c, xx, by, 240, 0.9, 'point', None, 'default', theme=th, mode='silhouette', color=th['ink'])
+    xx += 310
     draw(c, xx, by, 240, 0.9, 'point', None, 'default', theme=th, mode='rim')
     y += size_h + 40
     c.text('SILHOUETTEN-TEST 120 px (jede Pose: Kopf, Schnabel, Schwanz, Flügel erkennbar?)', 40, y + 18, f_lab, base['ink_soft'])

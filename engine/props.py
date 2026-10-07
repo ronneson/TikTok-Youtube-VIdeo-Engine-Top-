@@ -1,13 +1,15 @@
 """Piktogramm-Repertoire („Peel & Pop“, STIL.md Abschnitt 7): flache Sticker aus Kreisen, Ellipsen, Rechtecken und Pfaden.
 
-Jedes Piktogramm ist eine Funktion fn(c, p, s, t, kw), die um den Ursprung (0, 0) zeichnet; s = größte Ausdehnung in px,
-p = Palette des Themas (nur Themenfarben, keine eigenen HEX-Werte), t = Zeit für genau eine Eigenbewegung (schweben,
-wippen, funkeln, drehen, tropfen). Zwei-Ton-Flat über tone(): Grundfarbe, harte Schattenfläche (-12 %) rechts unten,
-Glanzpunkt (+10 %) oben links, der bei 1.3 Hz funkelt. Keine Linien innen, keine Verläufe.
+Jedes Piktogramm ist eine Funktion fn(c, p, s, t, kw), die um den Ursprung (0, 0) zeichnet; s = größte Ausdehnung in px
+(die reale Silhouette misst 0.9..1.0 s und liegt mittig, Hüllen in HULLS sind gemessen), p = Palette des Themas (nur
+Themenfarben, keine eigenen HEX-Werte), t = Zeit für genau eine Eigenbewegung (schweben, wippen, funkeln, drehen, tropfen).
+Zwei-Ton-Flat über tone(): Grundfarbe, harte Schattenfläche (-12 %) rechts unten, Glanzpunkt (+10 %) oben links, der bei
+1.3 Hz funkelt. Keine Linien innen; sichtbare Striche sind mindestens 0.05 s dick (14 px bei Hero-Größe, STIL.md 1.2).
 
 draw() legt Verschiebung, Drehung, Pop-Skalierung (k) und die Sticker-Technik darum: Schatten (dy 8, sigma 16, alpha 0.20)
--> weißer Rand (10 px) -> Farbe. mode='color' zeichnet nur die Farbe, 'rim' nur den Rand, 'silhouette' alles in einer Farbe.
-Unbekannte Namen zeichnen eine neutrale Fragezeichen-Karte, nie einen Fehler.
+-> weißer Rand (Prop-Standard: 10 px, Sticker-Text 8 px, Stempel 6 px) -> Farbe. mode='color' zeichnet nur die Farbe,
+'rim' nur den Rand, 'silhouette' alles in einer Farbe. Text in Props nie unter MIN_TEXT = 26 px (STIL.md 1.9): die Platte
+wird breiter, nie die Schrift kleiner. Unbekannte Namen zeichnen eine neutrale Fragezeichen-Karte, nie einen Fehler.
 """
 from __future__ import annotations
 import math
@@ -20,35 +22,46 @@ from . import color as CO
 from .canvas import rounded_poly_path, smooth_path
 
 PROPS: dict = {}        # name -> fn(c, p, s, t, kw)
-HULLS: dict = {}        # name -> (w, h) relativ zu s (Hüllform für Marks und Sichtprüfung)
+HULLS: dict = {}        # name -> (w, h) relativ zu s (gemessene Silhouette über t in [0, 2], ohne Lichtkegel/Glow)
+HULL_FN: dict = {}      # name -> fn(s, kw) -> (w, h) in px für textabhängige Props
+RIMS: dict = {}         # name -> Standard-Randbreite px (STIL.md 1.2)
 ALIASES: dict = {}      # alias -> name
 
 RIM = 10.0              # Sticker-Rand der Piktogramme (STIL.md 1.2)
+RIM_TEXT = 8.0          # Sticker-Text (Schlagwort, Stat, Blasen, Schild, Karteikarte)
+RIM_STAMP = 6.0         # Stempel
 SHADOW = (8.0, 16.0, 0.20)
+MIN_TEXT = 26.0         # kleinste Schriftgröße in Props (STIL.md 1.9, Hochformat)
 TWO_PI = 2 * math.pi
 
 
-def prop(name, *aliases, hull=(1.0, 1.0)):
-    """Registriert eine Zeichenfunktion unter name (und Aliasnamen) mit relativer Hüllform (w, h)."""
+def prop(name, *aliases, hull=(1.0, 1.0), rim=RIM):
+    """Registriert eine Zeichenfunktion unter name (und Aliasnamen) mit relativer Hüllform (w, h) und Rand-Standard px."""
     def deco(fn):
         PROPS[name] = fn
         HULLS[name] = hull
+        RIMS[name] = float(rim)
         for a in aliases:
             PROPS[a] = fn
             HULLS[a] = hull
+            RIMS[a] = float(rim)
             ALIASES[a] = name
         return fn
     return deco
 
 
 class Pal:
-    """Kurznamen der Themenfarben für die Piktogramme (alle aus theme.get, siehe STIL.md 3)."""
+    """Kurznamen der Themenfarben für die Piktogramme (alle aus theme.get, siehe STIL.md 3).
+
+    gl = 1.0, wenn das Thema einen Glow hat, sonst 0.0 (Respekt-Modus: Lampen leuchten nicht mehr, nur die Kerze).
+    rock ist der helle Steinton (mix(steel, bg2, 0.3)), rock_hi noch 10 % heller für Grundflächen von Stein-Props."""
 
     def __init__(self, th):
         g = th.get
         self.accent = g('accent', '#F2B544')
         self.accent2 = g('accent2', '#5FD9B8')
-        self.glow = g('glow') or g('ink', '#F7F1E6')
+        self.gl = 1.0 if g('glow') else 0.0
+        self.glow = g('glow') or g('candle', '#FFD8A0')
         self.ink = g('ink', '#F7F1E6')          # Elfenbein
         self.soft = g('ink_soft', '#C9C2D6')
         self.dark = g('card_ink', '#171A28')    # Tinte
@@ -65,9 +78,11 @@ class Pal:
         self.water = g('water', '#5FD3F2')
         self.candle = g('candle', '#FFD8A0')
         self.gold = g('gold_old', '#E2B55C')    # Altgold für Münzen/Barren, nie Wunder-Gold
-        self.rock = CO.hexs(CO.mix(self.steel, self.bg2, 0.55))
+        self.rock = CO.hexs(CO.mix(self.steel, self.bg2, 0.3))
+        self.rock_hi = CO.hexs(CO.lighten(self.rock, 0.1))
         self.steel_dark = CO.hexs(CO.darken(self.steel, 0.3))
         self.wood_dark = CO.hexs(CO.darken(self.wood, 0.25))
+        self.amber = CO.hexs(CO.mix(self.accent, self.wood, 0.4))   # Sirup, Honig
         self.respect = bool(g('respect_mode'))
 
 
@@ -124,6 +139,33 @@ def P_pie(x, y, r, a0, a1):
     return p
 
 
+def P_stroke(path, w):
+    """Umriss eines mit Breite w (runde Kappen) gestrichelten Pfades als Fläche, damit Striche wie Formen (tone) behandelt werden."""
+    paint = skia.Paint(); paint.setStyle(skia.Paint.kStroke_Style); paint.setStrokeWidth(float(w))
+    paint.setStrokeCap(skia.Paint.kRound_Cap); paint.setStrokeJoin(skia.Paint.kRound_Join)
+    out = skia.Path()
+    return out if paint.getFillPath(path, out) else path
+
+
+def P_line(x0, y0, x1, y1, w):
+    """Dicke Rundlinie als Fläche (Kapsel)."""
+    p = skia.Path()
+    p.moveTo(float(x0), float(y0)); p.lineTo(float(x1), float(y1))
+    return P_stroke(p, w)
+
+
+def P_arc(x, y, r, a0, a1, w):
+    """Kreisbogen (Grad, 0 = rechts, im Uhrzeigersinn) als dicke Fläche."""
+    p = skia.Path()
+    p.addArc(skia.Rect.MakeLTRB(x - r, y - r, x + r, y + r), float(a0), float(a1 - a0))
+    return P_stroke(p, w)
+
+
+def P_curve(pts, w, tension=0.5):
+    """Weiche dicke Linie durch Punkte als Fläche."""
+    return P_stroke(smooth_path(pts, tension, False), w)
+
+
 def P_union(*paths):
     out = paths[0]
     for q in paths[1:]:
@@ -154,6 +196,14 @@ def P_move(path, dx, dy):
     q = skia.Path(path); q.offset(float(dx), float(dy)); return q
 
 
+def P_scale(path, sx, sy=None, px=0.0, py=0.0):
+    q = skia.Path(path)
+    m = skia.Matrix()
+    m.setScale(float(sx), float(sx if sy is None else sy), float(px), float(py))
+    q.transform(m)
+    return q
+
+
 def P_heart(x, y, w):
     """Herz aus zwei Kreisen und einer abgerundeten Spitze, Breite w."""
     r = w * 0.26
@@ -169,6 +219,11 @@ def P_drop(x, y, w, h):
     body = P_circle(x, cy, r)
     tip = P_poly([(x, y - h / 2), (x + r * 0.98, cy - r * 0.2), (x - r * 0.98, cy - r * 0.2)], w * 0.10)
     return P_union(body, tip)
+
+
+def P_egg(x, y, w, h):
+    """Ei ohne Knick: Schnittmenge zweier Ovale (unten rund, oben schmaler), Mittelpunkt (x, y), Breite w, Höhe h."""
+    return P_inter(P_oval(x, y + 0.1 * h, w / 2, 0.48 * h), P_oval(x, y - 0.02 * h, w * 0.52, 0.56 * h))
 
 
 def P_star(x, y, r_out, r_in, n=5, rot=-90.0, r_corner=0.0):
@@ -225,9 +280,20 @@ def curve(c, pts, color, width, closed=False, alpha=1.0, tension=0.5):
 
 
 def add_glow(c, x, y, r, color, alpha=0.3, sigma=None):
-    """Additiver Lichtfleck, nur im Farbpass (Lampen, Flammen, Edelsteine)."""
+    """Additiver Lichtfleck, nur im Farbpass (Lampen, Flammen, Edelsteine). alpha 0 (Respekt: p.gl = 0) zeichnet nichts."""
     if plain(c) and alpha > 0:
         c.glow(x, y, r, color, alpha, sigma)
+
+
+def light_cone(c, p, x, y, length, half_angle, s, alpha=0.22, rot=0.0):
+    """Weicher Lichtkegel (glow, additiv, Weichzeichnung 0.08 s), beginnt schmal (0.04 s) am Ursprung (x, y) und läuft nach
+    rechts aus; nur im Farbpass, nie im Rand-/Schattenpass, im Respekt-Modus aus. Gehört nicht zur Hülle."""
+    if not plain(c) or alpha * p.gl <= 0:
+        return
+    a = math.radians(half_angle)
+    pts = [(x, y - 0.02 * s), (x + length, y - length * math.tan(a)), (x + length, y + length * math.tan(a)), (x, y + 0.02 * s)]
+    with c.tf(rot=rot, px=x, py=y):
+        c.poly(pts, p.glow, alpha * p.gl, blur=0.08 * s, blend='add')
 
 
 # ---------------------------------------------------------------- Bewegungen (je Prop genau eine)
@@ -256,10 +322,86 @@ def _phase(name: str, seed) -> float:
     return 1.7 * float(seed or 0) + h * 0.37
 
 
-# ---------------------------------------------------------------- Text in Props
+# ---------------------------------------------------------------- Text in Props (STIL.md 1.9: nie unter 26 px)
 
 def label_font(role, size):
     return F.font(role, size)
+
+
+def text_w(text, f, spacing=0.0) -> float:
+    """Textbreite ohne Canvas (für Hüllen und Plattenbreiten)."""
+    if not text:
+        return 0.0
+    if spacing:
+        return sum(f.measureText(ch) for ch in text) + spacing * (len(text) - 1)
+    return f.measureText(text)
+
+
+def fit_font(c, text, role, size, max_w, spacing=0.0, min_size=MIN_TEXT):
+    """Schrift der Rolle, notfalls verkleinert, bis text in max_w passt, aber nie unter min_size (26 px): dann wird die
+    Platte breiter, nie die Schrift kleiner. c wird nicht gebraucht (Kompatibilität)."""
+    sz = float(size)
+    for _ in range(14):
+        f = F.font(role, sz)
+        if text_w(text, f, spacing) <= max_w or sz <= min_size:
+            break
+        sz = max(min_size, sz * 0.92)
+    return F.font(role, max(min_size, sz))
+
+
+# Textabhängige Props: kw-Schlüssel, Standard, Rolle, Größe/s, Polster/s, Höchstbreite/s, Laufweite, Versalien
+TEXT = {
+    'speech_bubble': ('text', 'Odd.', 'number', 0.30, 0.34, 1.20, 0.0, False),
+    'thought_bubble': ('text', '?', 'display', 0.26, 0.40, 1.10, 0.0, False),
+    'stamp': ('text', 'VERIFIED ODD', 'display', 0.30, 0.30, 1.20, 0.0, True),
+    'keyword': ('text', 'ODD', 'display', 0.30, 0.28, 1.40, 0.0, True),
+    'closed_label': ('text', 'EXHIBIT CLOSED', 'mono', 0.16, 0.24, 1.10, 1.0, True),
+    'stat_chip': ('value', 22, 'number', 0.30, 0.30, 1.40, 0.0, False),
+    'newspaper': ('text', 'EXTRA', 'display', 0.24, 0.0, 0.70, 0.0, True),
+    'country_chip': ('code', 'UK', 'mono', 0.30, 0.0, 0.62, 2.0, True),
+    'calendar': ('text', '31', 'number', 0.36, 0.0, 0.70, 0.0, False),
+    'flip_card': ('front', 'APPROVED', 'mono', 0.16, 0.0, 0.80, 0.0, False),
+    'file_folder': ('text', 'CASE 017', 'mono', 0.10, 0.0, 0.50, 1.0, True),
+    'scroll': ('text', None, 'serif_italic', 0.14, 0.0, 0.48, 0.0, False),
+}
+
+
+def text_spec(name, s, kw=None) -> tuple:
+    """(text, font, breite_px, laufweite) des Textes eines Text-Props bei Größe s (oder (None, None, 0, 0) ohne Text)."""
+    key, default, role, size_k, pad_k, max_w_k, spacing, upper = TEXT[name]
+    kw = kw or {}
+    text = kw.get(key, default)
+    if text is None or text == '':
+        return None, None, 0.0, spacing
+    if name == 'stat_chip':
+        text = _stat_text(text, float(kw.get('count', 1.0)))
+    elif name == 'country_chip':
+        text = str(text)[:3]
+    elif name == 'file_folder':
+        text = str(text)[:8]
+    text = str(text).upper() if upper else str(text)
+    f = fit_font(None, text, role, size_k * s, max_w_k * s, spacing)
+    return text, f, text_w(text, f, spacing), spacing
+
+
+def text_font_px(name, size, **kw) -> float:
+    """Schriftgröße in px, mit der Prop name bei size seinen Text setzt (0 = kein Text); für Prüfungen (>= MIN_TEXT)."""
+    if name not in TEXT:
+        return 0.0
+    text, f, w, sp = text_spec(name, float(size), kw)
+    if f is None:
+        return 0.0
+    if name == 'file_folder' and f.getSize() > 0.1 * size + 0.5:
+        return 0.0   # Etikett entfällt, wenn 0.1 s unter dem Minimum läge
+    return float(f.getSize())
+
+
+def _stat_text(val, count) -> str:
+    """Zahl der Stat-Plakette, mit count 0..1 hochgezählt (ganze Zahlen mit Tausenderpunkt, sonst eine Nachkommastelle)."""
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return str(val)
+    v = val * max(0.0, min(1.0, count))
+    return f"{v:,.0f}" if float(val).is_integer() else f"{v:.1f}"
 
 
 # ---------------------------------------------------------------- Öffentliche API
@@ -273,19 +415,28 @@ def has(name) -> bool:
     return name in PROPS
 
 
-def hull(name, size) -> tuple:
-    """Hüllform (w, h) in px für Schatten-/Markenzwecke."""
+def hull(name, size, **kw) -> tuple:
+    """Hüllform (w, h) in px für Schatten-/Markenzwecke: gemessene Silhouette; bei Text-Props aus dem Text (kw) berechnet."""
+    fn = HULL_FN.get(name)
+    if fn is not None:
+        return fn(float(size), kw)
     w, h = HULLS.get(name, (1.0, 1.0))
     return (w * size, h * size)
 
 
-def draw(c, name, x, y, size, t=0.0, theme=None, alpha=1.0, rot=0.0, k=1.0, mode='sticker', rim=RIM, shadow=True, color=None, seed=0, **kw):
+def rim_for(name) -> float:
+    """Rand-Standard des Props in px (10, Sticker-Text 8, Stempel 6; unbekannt 10)."""
+    return RIMS.get(name, RIM)
+
+
+def draw(c, name, x, y, size, t=0.0, theme=None, alpha=1.0, rot=0.0, k=1.0, mode='sticker', rim=None, shadow=True, color=None, seed=0, **kw):
     """Zeichnet Piktogramm name mit Mittelpunkt (x, y) und größter Ausdehnung size px.
 
     t treibt die Eigenbewegung; theme = theme.get(...) (None -> curious); alpha < 1 zeichnet den ganzen Sticker in einer Ebene;
     rot in Grad; k = Pop-Skalierung 0..1 (0 = unsichtbar). mode: 'sticker' (Schatten -> Rand -> Farbe), 'color' (nur Farbe),
-    'rim' (nur Rand), 'silhouette' (eine Farbe: color oder ink). rim = Randbreite px, shadow False schaltet den Schatten ab.
-    Weitere Schlüssel (text, level, dir, ...) gehen an das Piktogramm. Unbekannte Namen -> Fragezeichen-Karte."""
+    'rim' (nur Rand), 'silhouette' (eine Farbe: color oder ink). rim = Randbreite px (None = Prop-Standard aus RIMS),
+    shadow False schaltet den Schatten ab. Marken für check.py nur als Sticker ('sticker') oder Silhouette ('icon').
+    Weitere Schlüssel (text, level, dir, count, lasers, under, ...) gehen an das Piktogramm. Unbekannte Namen -> Fragezeichen-Karte."""
     if k <= 0.001 or alpha <= 0.0 or size <= 0:
         return
     th = theme if theme is not None else TH.get('curious')
@@ -295,14 +446,16 @@ def draw(c, name, x, y, size, t=0.0, theme=None, alpha=1.0, rot=0.0, k=1.0, mode
     kw = dict(kw)
     kw.setdefault('ph', _phase(name, seed))
     kw.setdefault('seed', seed)
+    rim = rim_for(name) if rim is None else float(rim)
 
     def body(cc):
         fn(cc, p, s, t, kw)
 
     def run(cc):
         with cc.tf(x=x, y=y, rot=rot, sx=k, px=0.0, py=0.0):
-            hw, hh = hull(name, s)
-            cc.mark(-hw / 2, -hh / 2, hw, hh, name, 'sticker')
+            if mode in ('sticker', 'silhouette'):
+                hw, hh = hull(name, s, **kw)
+                cc.mark(-hw / 2, -hh / 2, hw, hh, name, 'sticker' if mode == 'sticker' else 'icon')
             if mode == 'silhouette':
                 cc.silhouette(body, color or th['ink'])
             elif mode == 'rim':
@@ -329,8 +482,9 @@ def draw(c, name, x, y, size, t=0.0, theme=None, alpha=1.0, rot=0.0, k=1.0, mode
 
 
 def sheet(out_path: str, theme: str = 'curious', cols: int = 8, size: float = 150, cell=(320, 250), t: float = 0.4) -> str:
-    """Übersichtsbogen: jedes Piktogramm als Sticker (size px) und daneben als 120-px-Silhouette (Silhouettentest STIL.md 1.2),
-    beschriftet in DM Mono; Lichtrichtung oben links. Rückgabe: Pfad der PNG."""
+    """Übersichtsbogen: jedes Piktogramm als Sticker (size px) und daneben als 120-px-Silhouette (Silhouettentest STIL.md 1.2)
+    mit derselben Phase, beschriftet in DM Mono; Lichtrichtung oben links. Breite Props (Text-Platten) werden über ihre
+    Hülle in die Zelle eingepasst. Rückgabe: Pfad der PNG."""
     from .canvas import Frame
     th = TH.get(theme)
     ns = names()
@@ -345,9 +499,11 @@ def sheet(out_path: str, theme: str = 'curious', cols: int = 8, size: float = 15
     for i, n in enumerate(ns):
         x0, y0 = (i % cols) * cw, 90 + (i // cols) * ch
         c.rect(x0 + 8, y0 + 8, cw - 16, ch - 16, th['bg2'], r=24, alpha=0.35)
-        hw = max(1.0, HULLS.get(n, (1.0, 1.0))[0])
-        draw(c, n, x0 + 104, y0 + 108, size / hw, t + i * 0.37, th, seed=i)
-        draw(c, n, x0 + 248, y0 + 108, 120 / hw, t, th, mode='silhouette', color=th['ink'], seed=i)
+        hw, hh = hull(n, size)
+        fit = min(1.0, (cw * 0.5) / max(hw, 1.0), (ch - 70) / max(hh, 1.0))
+        tt = t + i * 0.37
+        draw(c, n, x0 + 104, y0 + 108, size * fit, tt, th, seed=i)
+        draw(c, n, x0 + 248, y0 + 108, 120 * fit, tt, th, mode='silhouette', color=th['ink'], seed=i)
         c.text(n, x0 + cw / 2, y0 + ch - 30, fm, th['ink_soft'], 'center', 'middle')
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     fr.save_png(out_path)
@@ -398,14 +554,14 @@ def _coin(c, p, s, t, kw):
     """Münze in Altgold mit Prägering und Stern; dreht sich (Scale-X 0.55..1), die dunkle Kante wird sichtbar."""
     cs = math.cos(TWO_PI * 0.35 * t + kw['ph'])
     ax = 0.55 + 0.45 * abs(cs)
-    edge = 0.14 * s * (1 - ax) / 0.45 * (1 if cs >= 0 else -1)
+    edge = 0.15 * s * (1 - ax) / 0.45 * (1 if cs >= 0 else -1)
     if abs(edge) > 1:
         with c.tf(x=edge, sx=ax):
-            flat(c, P_circle(0, 0, 0.42 * s), CO.darken(p.gold, 0.3))
+            flat(c, P_circle(0, 0, 0.47 * s), CO.darken(p.gold, 0.3))
     with c.tf(sx=ax):
-        tone(c, P_circle(0, 0, 0.42 * s), p.gold, s, t, ph=kw['ph'])
-        flat(c, P_circle(0, 0, 0.3 * s), CO.darken(p.gold, 0.12))
-        flat(c, P_star(0, 0, 0.17 * s, 0.085 * s, 5, -90, 0.015 * s), p.gold)
+        tone(c, P_circle(0, 0, 0.47 * s), p.gold, s, t, ph=kw['ph'])
+        flat(c, P_circle(0, 0, 0.34 * s), CO.darken(p.gold, 0.12))
+        flat(c, P_star(0, 0, 0.19 * s, 0.095 * s, 5, -90, 0.015 * s), p.gold)
 
 
 @prop('gold_bar', hull=(0.96, 0.6))
@@ -422,7 +578,7 @@ def _gold_bar(c, p, s, t, kw):
 @prop('diamond', 'gem', hull=(0.9, 0.86))
 def _diamond(c, p, s, t, kw):
     """Edelstein aus Polygon (accent2): Krone, Rundiste, Facetten; funkelt (Glanzstern 1.3 Hz)."""
-    w, top, mid, bot = 0.45 * s, -0.36 * s, -0.12 * s, 0.44 * s
+    w, top, mid, bot = 0.48 * s, -0.42 * s, -0.14 * s, 0.48 * s
     outer = P_poly([(-w * 0.6, top), (w * 0.6, top), (w, mid), (0, bot), (-w, mid)], 0.03 * s)
     tone(c, outer, p.accent2, s, t, ph=kw['ph'], shine=False)
     if plain(c):
@@ -433,17 +589,17 @@ def _diamond(c, p, s, t, kw):
         a = twinkle(t, kw['ph'])
         sp = P_star(-0.2 * s, -0.3 * s, 0.1 * s * a, 0.03 * s, 4, -90)
         flat(c, sp, p.white, a)
-        add_glow(c, 0, 0, 0.5 * s, p.glow, 0.12)
+        add_glow(c, 0, 0, 0.5 * s, p.glow, 0.12 * p.gl)
 
 
 @prop('safe', hull=(0.82, 0.9))
 def _safe(c, p, s, t, kw):
-    """Tresor: Korpus (steel), Türfeld, Zahlenrad (accent) und Griff; das Rad dreht langsam."""
+    """Tresor: Korpus (steel), Türfeld, Zahlenrad (danger) und Griff; das Rad dreht langsam."""
     tone(c, P_rrect(0, 0, 0.78 * s, 0.86 * s, 0.08 * s), p.steel, s, t, ph=kw['ph'], shine=False)
     flat(c, P_rrect(0, 0, 0.6 * s, 0.68 * s, 0.06 * s), CO.darken(p.steel, 0.2))
     flat(c, P_circle(-0.08 * s, 0, 0.19 * s), p.dark)
     with c.tf(rot=40 * t + kw['ph'] * 10, px=-0.08 * s, py=0):
-        flat(c, P_circle(-0.08 * s, 0, 0.14 * s), p.accent)
+        flat(c, P_circle(-0.08 * s, 0, 0.14 * s), p.danger)
         flat(c, P_rrect(-0.08 * s, -0.08 * s, 0.05 * s, 0.09 * s, 0.02 * s), p.dark)
     flat(c, P_rrect(0.2 * s, 0, 0.06 * s, 0.3 * s, 0.03 * s), p.dark)
     flat(c, P_rrect(-0.28 * s, 0.47 * s, 0.1 * s, 0.08 * s, 0.03 * s), p.steel_dark)
@@ -452,8 +608,11 @@ def _safe(c, p, s, t, kw):
 
 @prop('vault_door', hull=(0.94, 0.94))
 def _vault_door(c, p, s, t, kw):
-    """Tresortür: Stahlscheibe mit Bolzenkranz und vierspeichigem Rad (accent); das Rad dreht (öffnen per kw['open'] 0..1)."""
+    """Tresortür: Stahlscheibe mit Bolzenkranz und vierspeichigem Rad (accent); das Rad dreht (öffnen per kw['open'] 0..1).
+    kw['lasers'] 0..10: so viele Laserlinien (ok, 0.03 s, alpha 0.8, additiv) liegen als Fächer vor der Tür; Linie i ploppt
+    (Scale -> 0) aus, sobald lasers < i + 1 (STIL.md 7 #44). Nur im Farbpass, Hülle unverändert."""
     open_k = float(kw.get('open', 0.0))
+    lasers = float(kw.get('lasers', 0.0))
     with c.tf(sx=max(0.08, 1 - 0.92 * open_k), px=-0.47 * s, py=0):
         tone(c, P_circle(0, 0, 0.47 * s), p.steel, s, t, ph=kw['ph'], shine=False)
         flat(c, P_circle(0, 0, 0.36 * s), CO.darken(p.steel, 0.22))
@@ -465,6 +624,17 @@ def _vault_door(c, p, s, t, kw):
                 flat(c, P_rot(P_rrect(0.15 * s, 0, 0.3 * s, 0.07 * s, 0.035 * s), i * 90), p.accent)
             c.ring(0, 0, 0.27 * s, 0.07 * s, p.accent)
         flat(c, P_circle(0, 0, 0.08 * s), p.accent)
+    if lasers > 0 and plain(c):
+        with c.clip_path(P_circle(0, 0, 0.47 * s)):
+            ox, oy = 0.46 * s, 0.46 * s
+            for i in range(10):
+                kk = max(0.0, min(1.0, lasers - i))
+                if kk <= 0:
+                    continue
+                a = math.radians(186 + i * 8)
+                ex, ey = ox + 1.1 * s * math.cos(a), oy + 1.1 * s * math.sin(a)
+                with c.tf(sx=kk, px=(ox + ex) / 2, py=(oy + ey) / 2):
+                    c.line(ox, oy, ex, ey, p.ok, 0.03 * s, 0.8, blend='add')
 
 
 @prop('key', hull=(0.96, 0.4))
@@ -479,13 +649,14 @@ def _key(c, p, s, t, kw):
 
 @prop('lock', hull=(0.7, 0.9))
 def _lock(c, p, s, t, kw):
-    """Vorhängeschloss: Bügel (steel), Körper (accent), Schlüsselloch (Tinte); der Bügel hebt sich leicht an."""
+    """Vorhängeschloss: Bügel (steel_dark), Körper (steel), Schlüsselplatte (accent) mit Schlüsselloch (Tinte); der Bügel hebt sich leicht an."""
     lift = 0.03 * s * (0.5 + 0.5 * math.sin(TWO_PI * 0.5 * t + kw['ph']))
-    c.arc(0, -0.18 * s - lift, 0.2 * s, 180, 360, p.steel, 0.09 * s)
-    c.line(-0.2 * s, -0.18 * s - lift, -0.2 * s, -0.02 * s, p.steel, 0.09 * s)
-    c.line(0.2 * s, -0.18 * s - lift, 0.2 * s, 0.0, p.steel, 0.09 * s)
-    tone(c, P_rrect(0, 0.17 * s, 0.6 * s, 0.52 * s, 0.09 * s), p.accent, s, t, ph=kw['ph'])
-    flat(c, P_union(P_circle(0, 0.11 * s, 0.07 * s), P_rrect(0, 0.23 * s, 0.07 * s, 0.18 * s, 0.03 * s)), p.dark)
+    y0 = -0.19 * s - lift
+    shackle = P_union(P_arc(0, y0, 0.21 * s, 180, 360, 0.1 * s), P_line(-0.21 * s, y0, -0.21 * s, -0.02 * s, 0.1 * s), P_line(0.21 * s, y0, 0.21 * s, 0.0, 0.1 * s))
+    tone(c, shackle, p.steel_dark, s, t, shine=False, shade=False)
+    tone(c, P_rrect(0, 0.19 * s, 0.66 * s, 0.56 * s, 0.1 * s), p.steel, s, t, ph=kw['ph'])
+    flat(c, P_circle(0, 0.17 * s, 0.15 * s), p.accent)
+    flat(c, P_union(P_circle(0, 0.13 * s, 0.06 * s), P_rrect(0, 0.23 * s, 0.06 * s, 0.14 * s, 0.025 * s)), p.dark)
 
 
 @prop('mask', 'mask_domino', hull=(0.96, 0.5))
@@ -502,14 +673,12 @@ def _mask(c, p, s, t, kw):
 
 @prop('crowbar', hull=(0.96, 0.6))
 def _crowbar(c, p, s, t, kw):
-    """Brecheisen (steel): Schaft mit Haken, der sich über das Ende zurückbiegt, flaches Keilende; wippt wie beim Hebeln."""
-    with c.tf(rot=-24 + rock(t, kw['ph'], 5, 0.4)):
-        w = 0.09 * s
-        c.line(-0.4 * s, 0, 0.28 * s, 0, p.steel, w)
-        c.arc(0.28 * s, -0.14 * s, 0.14 * s, 90, -130, p.steel, w)
-        flat(c, P_poly([(-0.5 * s, -0.09 * s), (-0.5 * s, 0.09 * s), (-0.36 * s, 0.05 * s), (-0.36 * s, -0.05 * s)], 0.02 * s), p.steel)
-        if plain(c):
-            c.line(-0.3 * s, -0.02 * s, 0.1 * s, -0.02 * s, CO.lighten(p.steel, 0.22), 0.03 * s, twinkle(t, kw['ph']))
+    """Brecheisen (steel): Schaft mit Haken, der sich über das Ende zurückbiegt, flaches Keilende (eine Fläche in Zwei-Ton); wippt wie beim Hebeln."""
+    with c.tf(x=0.05 * s, y=0.06 * s, rot=-24 + rock(t, kw['ph'], 5, 0.4)):
+        w = 0.1 * s
+        bar = P_union(P_line(-0.4 * s, 0, 0.28 * s, 0, w), P_arc(0.28 * s, -0.14 * s, 0.14 * s, 90, -130, w),
+                      P_poly([(-0.5 * s, -0.09 * s), (-0.5 * s, 0.09 * s), (-0.36 * s, 0.05 * s), (-0.36 * s, -0.05 * s)], 0.02 * s))
+        tone(c, bar, p.steel, s, t, ph=kw['ph'], shine_at=(-0.2 * s, -0.02 * s))
 
 
 @prop('barrel', hull=(0.74, 0.94))
@@ -536,10 +705,10 @@ def _barrel(c, p, s, t, kw):
 
 @prop('syrup_bottle', hull=(0.5, 0.96))
 def _syrup_bottle(c, p, s, t, kw):
-    """Sirupflasche: Bernstein-Korpus (accent), Hals, Deckel (wood), Papier-Etikett mit Blatt (danger); schwebt."""
+    """Sirupflasche: Bernstein-Korpus (amber = accent/wood-Mix), Hals, Deckel (wood), Papier-Etikett mit Blatt (danger); schwebt."""
     with c.tf(y=hover(t, kw['ph'])):
         body = P_union(P_rrect(0, 0.14 * s, 0.46 * s, 0.64 * s, 0.1 * s), P_rrect(0, -0.24 * s, 0.18 * s, 0.26 * s, 0.05 * s))
-        tone(c, body, p.accent, s, t, ph=kw['ph'])
+        tone(c, body, p.amber, s, t, ph=kw['ph'])
         flat(c, P_rrect(0, -0.4 * s, 0.22 * s, 0.14 * s, 0.04 * s), p.wood)
         flat(c, P_rrect(0, 0.16 * s, 0.34 * s, 0.34 * s, 0.05 * s), p.paper)
         leaf = P_union(P_star(0, 0.13 * s, 0.14 * s, 0.085 * s, 5, -90, 0.02 * s), P_rrect(0, 0.26 * s, 0.03 * s, 0.1 * s, 0.015 * s))
@@ -548,18 +717,18 @@ def _syrup_bottle(c, p, s, t, kw):
 
 @prop('water_drop', hull=(0.52, 0.9))
 def _water_drop(c, p, s, t, kw):
-    """Wassertropfen (water): fällt in einer Schleife und staucht beim Aufsetzen (Squash, Volumenregel)."""
+    """Wassertropfen (water, 0.6 x 0.85 s): fällt in einer kurzen Schleife (+-0.06 s) und staucht beim Aufsetzen (Squash, Volumenregel)."""
     u = ((t * 0.9 + kw['ph'] / TWO_PI) % 1.0)
     if u < 0.72:
-        y = -0.18 * s + 0.36 * s * A.in_quad(u / 0.72)
+        y = -0.06 * s + 0.12 * s * A.in_quad(u / 0.72)
         sy, sx = 1.0, 1.0
     else:
         v = (u - 0.72) / 0.28
-        sy = 1 - 0.14 * math.sin(math.pi * v)
+        sy = 1 - 0.12 * math.sin(math.pi * v)
         sx = 1 / math.sqrt(sy)
-        y = 0.18 * s
-    with c.tf(y=y, sx=sx, sy=sy, px=0, py=0.3 * s):
-        tone(c, P_drop(0, 0, 0.42 * s, 0.6 * s), p.water, s, t, ph=kw['ph'], shine_at=(-0.1 * s, 0.1 * s))
+        y = 0.06 * s
+    with c.tf(y=y, sx=sx, sy=sy, px=0, py=0.42 * s):
+        tone(c, P_drop(0, 0, 0.6 * s, 0.85 * s), p.water, s, t, ph=kw['ph'], shine_at=(-0.14 * s, 0.12 * s))
 
 
 @prop('cheese', hull=(0.96, 0.7))
@@ -604,25 +773,25 @@ def _painting(c, p, s, t, kw):
 @prop('frame', hull=(0.9, 0.96))
 def _frame(c, p, s, t, kw):
     """Leerer Bilderrahmen (wood) mit dunkler Wand (bg2) dahinter; pendelt leicht um die Aufhängung."""
-    with c.tf(rot=rock(t, kw['ph'], 2.5), px=0, py=-0.5 * s):
-        outer = P_rrect(0, 0, 0.8 * s, 0.92 * s, 0.05 * s)
+    with c.tf(rot=rock(t, kw['ph'], 2.5), px=0, py=-0.44 * s):
+        outer = P_rrect(0, 0, 0.72 * s, 0.82 * s, 0.05 * s)
         tone(c, outer, p.wood, s, t, ph=kw['ph'], shine=False)
-        flat(c, P_rrect(0, 0, 0.6 * s, 0.72 * s, 0.02 * s), p.bg2)
-        flat(c, P_rrect(0, -0.46 * s, 0.14 * s, 0.1 * s, 0.03 * s), p.wood_dark)
-        for (x, y) in ((-0.4, -0.46), (0.4, -0.46), (-0.4, 0.46), (0.4, 0.46)):
-            flat(c, P_circle(x * s, y * s, 0.06 * s), p.wood_dark)
+        flat(c, P_rrect(0, 0, 0.54 * s, 0.64 * s, 0.02 * s), p.bg2)
+        flat(c, P_rrect(0, -0.41 * s, 0.14 * s, 0.1 * s, 0.03 * s), p.wood_dark)
+        for (x, y) in ((-0.36, -0.41), (0.36, -0.41), (-0.36, 0.41), (0.36, 0.41)):
+            flat(c, P_circle(x * s, y * s, 0.055 * s), p.wood_dark)
 
 
 @prop('museum', hull=(0.96, 0.84))
 def _museum(c, p, s, t, kw):
-    """Museum: Giebel, vier Säulen und Sockel (paper), Türflügel (accent); schwebt."""
+    """Museum: Giebel, vier Säulen und Sockel (paper), Türflügel (wood); schwebt."""
     with c.tf(y=hover(t, kw['ph'])):
         tone(c, P_poly([(-0.48 * s, -0.12 * s), (0.48 * s, -0.12 * s), (0, -0.42 * s)], 0.04 * s), p.paper, s, t, ph=kw['ph'], shine=False)
         flat(c, P_rrect(0, -0.1 * s, 0.84 * s, 0.08 * s, 0.02 * s), CO.darken(p.paper, 0.14))
         for x in (-0.3, -0.1, 0.1, 0.3):
             flat(c, P_rrect(x * s, 0.13 * s, 0.1 * s, 0.36 * s, 0.02 * s), p.paper)
         flat(c, P_rrect(0, 0.36 * s, 0.9 * s, 0.1 * s, 0.03 * s), CO.darken(p.paper, 0.14))
-        flat(c, P_rrect(0, 0.17 * s, 0.1 * s, 0.26 * s, 0.02 * s), p.accent)
+        flat(c, P_rrect(0, 0.17 * s, 0.1 * s, 0.26 * s, 0.02 * s), p.wood)
 
 
 @prop('bank', hull=(0.96, 0.84))
@@ -638,19 +807,19 @@ def _bank(c, p, s, t, kw):
 
 @prop('building', hull=(0.64, 0.98))
 def _building(c, p, s, t, kw):
-    """Hochhaus (bg2) mit Fensterraster (glow) und Antenne; ein Fenster wechselt langsam (<= 1 Hz)."""
-    body = P_union(P_rrect(0, 0.06 * s, 0.56 * s, 0.84 * s, 0.04 * s), P_rrect(-0.1 * s, -0.4 * s, 0.26 * s, 0.1 * s, 0.03 * s))
-    tone(c, body, p.bg2, s, t, ph=kw['ph'], shine=False)
-    c.line(-0.1 * s, -0.44 * s, -0.1 * s, -0.5 * s, p.steel, 0.04 * s)
+    """Hochhaus (rock-hell) mit Fensterraster (glow) und Dachaufbau; ein Fenster wechselt langsam (<= 1 Hz)."""
+    body = P_union(P_rrect(0, 0.08 * s, 0.56 * s, 0.84 * s, 0.04 * s), P_rrect(-0.1 * s, -0.4 * s, 0.26 * s, 0.14 * s, 0.03 * s))
+    tone(c, body, p.rock, s, t, ph=kw['ph'], shine=False)
+    flat(c, P_rrect(-0.1 * s, -0.47 * s, 0.1 * s, 0.05 * s, 0.02 * s), p.steel)
     on = int(t * 0.8 + kw['ph']) % 6
     i = 0
     for row in range(4):
         for col in range(3):
             x, y = (-0.17 + col * 0.17) * s, (-0.22 + row * 0.17) * s
             lit = (i * 7 + 3) % 6 != on
-            flat(c, P_rrect(x, y, 0.1 * s, 0.1 * s, 0.015 * s), p.glow if lit else CO.darken(p.bg2, 0.25))
+            flat(c, P_rrect(x, y, 0.1 * s, 0.1 * s, 0.015 * s), p.glow if lit else CO.darken(p.rock, 0.3))
             i += 1
-    flat(c, P_rrect(0, 0.4 * s, 0.14 * s, 0.14 * s, 0.02 * s), p.dark)
+    flat(c, P_rrect(0, 0.42 * s, 0.14 * s, 0.14 * s, 0.02 * s), p.dark)
 
 
 @prop('house', hull=(0.9, 0.9))
@@ -669,7 +838,7 @@ def _house(c, p, s, t, kw):
 @prop('police', hull=(0.9, 0.74))
 def _police(c, p, s, t, kw):
     """Polizeimütze: Deckel und Schirm (Tinte), Band (accent2) und Stern (Altgold); wippt."""
-    with c.tf(rot=rock(t, kw['ph'])):
+    with c.tf(rot=rock(t, kw['ph']), sx=1.1):
         top = P_union(P_oval(0, -0.1 * s, 0.42 * s, 0.26 * s), P_rrect(0, 0.08 * s, 0.76 * s, 0.26 * s, 0.06 * s))
         tone(c, top, p.dark, s, t, ph=kw['ph'], shine=False)
         flat(c, P_rrect(0, 0.08 * s, 0.76 * s, 0.14 * s, 0.04 * s), p.accent2)
@@ -679,14 +848,14 @@ def _police(c, p, s, t, kw):
 
 @prop('handcuffs', hull=(0.96, 0.5))
 def _handcuffs(c, p, s, t, kw):
-    """Handschellen (steel): zwei Ringe mit Gelenk und Kettenglied; die Ringe wackeln gegeneinander."""
+    """Handschellen (steel): zwei Ringe mit Gelenk und dickem Kettenglied (0.06 s); die Ringe wackeln gegeneinander."""
     a = rock(t, kw['ph'], 5, 0.5)
     for sgn in (-1, 1):
-        with c.tf(rot=sgn * a, px=sgn * 0.3 * s, py=0):
-            c.ring(sgn * 0.3 * s, 0, 0.17 * s, 0.085 * s, p.steel)
-            flat(c, P_rrect(sgn * 0.3 * s, 0.19 * s, 0.14 * s, 0.1 * s, 0.03 * s), p.steel_dark)
-    c.ring(0, 0, 0.06 * s, 0.035 * s, p.steel_dark)
-    c.line(-0.13 * s, 0, 0.13 * s, 0, p.steel_dark, 0.035 * s)
+        with c.tf(rot=sgn * a, px=sgn * 0.28 * s, py=0):
+            ring = P_diff(P_circle(sgn * 0.28 * s, 0, 0.2 * s), P_circle(sgn * 0.28 * s, 0, 0.11 * s))
+            tone(c, ring, p.steel, s, t, ph=kw['ph'], shine=False)
+            flat(c, P_rrect(sgn * 0.28 * s, 0.2 * s, 0.14 * s, 0.1 * s, 0.03 * s), p.steel_dark)
+    flat(c, P_union(P_line(-0.1 * s, 0, 0.1 * s, 0, 0.06 * s), P_diff(P_circle(0, 0, 0.09 * s), P_circle(0, 0, 0.03 * s))), p.steel_dark)
 
 
 # ================================================================ Fahrzeuge
@@ -702,7 +871,7 @@ def _wheel(c, p, x, y, r, t, ph, speed=330):
 
 @prop('car', 'getaway_car', hull=(0.98, 0.56))
 def _car(c, p, s, t, kw):
-    """Auto (Seitenansicht): Karosserie (accent2), Kabine, Fenster (foam), Räder drehen; kw['color'] überschreibt die Lackfarbe."""
+    """Auto (Seitenansicht): Karosserie (accent2), Kabine, Fenster (foam), Räder drehen; kw['paint'] überschreibt die Lackfarbe."""
     col = kw.get('paint', p.accent2)
     body = P_union(P_rrect(0, 0.06 * s, 0.94 * s, 0.26 * s, 0.08 * s), P_poly([(-0.32 * s, -0.06 * s), (0.3 * s, -0.06 * s), (0.2 * s, -0.26 * s), (-0.18 * s, -0.26 * s)], 0.05 * s))
     tone(c, body, col, s, t, ph=kw['ph'], shine_at=(-0.2 * s, -0.05 * s))
@@ -715,15 +884,21 @@ def _car(c, p, s, t, kw):
 
 @prop('motorcycle', hull=(0.98, 0.6))
 def _motorcycle(c, p, s, t, kw):
-    """Motorrad: zwei große Räder, Rahmen und Tank (danger), Sattel, Lenker; Räder drehen."""
-    _wheel(c, p, -0.3 * s, 0.14 * s, 0.17 * s, t, kw['ph'], 300)
-    _wheel(c, p, 0.3 * s, 0.14 * s, 0.17 * s, t, kw['ph'] + 1, 300)
-    c.polyline([(-0.3 * s, 0.14 * s), (-0.06 * s, -0.08 * s), (0.18 * s, -0.06 * s), (0.3 * s, 0.14 * s)], p.steel, 0.06 * s)
-    c.line(-0.06 * s, -0.08 * s, 0.02 * s, 0.12 * s, p.steel, 0.06 * s)
-    tone(c, P_oval(0.06 * s, -0.12 * s, 0.17 * s, 0.1 * s), p.danger, s, t, ph=kw['ph'])
-    flat(c, P_rrect(-0.16 * s, -0.17 * s, 0.22 * s, 0.07 * s, 0.035 * s), p.dark)
-    c.line(0.22 * s, -0.12 * s, 0.3 * s, -0.28 * s, p.steel, 0.05 * s)
-    c.line(0.24 * s, -0.28 * s, 0.36 * s, -0.28 * s, p.dark, 0.05 * s)
+    """Motorrad (Seitenansicht): zwei große Räder (r 0.15 s), Rahmen 0.08 s und Motorblock (steel), Tank + Verkleidung als eine
+    danger-Fläche, Sattel (Tinte), Auspuff unter dem Sattel, dicker Lenkerbügel, Scheinwerfer; Räder drehen."""
+    with c.tf(y=-0.02 * s):
+        _wheel(c, p, -0.32 * s, 0.2 * s, 0.15 * s, t, kw['ph'], 300)
+        _wheel(c, p, 0.32 * s, 0.2 * s, 0.15 * s, t, kw['ph'] + 1, 300)
+        frame = P_union(P_stroke(smooth_path([(-0.32 * s, 0.2 * s), (-0.18 * s, -0.02 * s), (0.1 * s, -0.02 * s), (0.32 * s, 0.2 * s)], 0.0, False), 0.08 * s),
+                        P_line(0.18 * s, -0.12 * s, 0.32 * s, 0.2 * s, 0.08 * s), P_rrect(0.0, 0.1 * s, 0.28 * s, 0.16 * s, 0.05 * s))
+        tone(c, frame, p.steel, s, t, shine=False, shade=False)
+        flat(c, P_line(-0.02 * s, 0.14 * s, -0.4 * s, 0.1 * s, 0.07 * s), p.steel_dark)
+        flat(c, P_circle(-0.4 * s, 0.1 * s, 0.045 * s), p.steel)
+        body = P_union(P_oval(0.0, -0.12 * s, 0.2 * s, 0.1 * s), P_poly([(0.1 * s, -0.22 * s), (0.4 * s, -0.16 * s), (0.42 * s, 0.0), (0.18 * s, -0.02 * s)], 0.04 * s))
+        tone(c, body, p.danger, s, t, ph=kw['ph'], shine_at=(-0.08 * s, -0.17 * s))
+        flat(c, P_rrect(-0.22 * s, -0.16 * s, 0.26 * s, 0.09 * s, 0.045 * s), p.dark)
+        flat(c, P_union(P_line(0.22 * s, -0.2 * s, 0.3 * s, -0.32 * s, 0.06 * s), P_line(0.24 * s, -0.33 * s, 0.4 * s, -0.33 * s, 0.07 * s)), p.steel_dark)
+        flat(c, P_circle(0.44 * s, -0.08 * s, 0.05 * s), p.glow)
 
 
 @prop('helicopter', hull=(0.98, 0.72))

@@ -218,6 +218,24 @@ def transition(c, fmt, kind, k, theme, draw_old, draw_new):
             e = A.out_cubic((k - 0.5) * 2)
             with c.tf(sx=max(0.001, e), px=fmt.cx, py=fmt.cy):
                 if draw_new: draw_new(c)
+    elif kind == 'peel':
+        # Sticker-Peel (STIL.md 1.6): die alte Seite löst sich an der unteren Kante, kippt und fliegt nach oben weg;
+        # darunter liegt die neue Seite. Schattenband an der Ablösekante.
+        e = A.in_cubic(k) if k < 0.5 else 0.125 + A.out_cubic((k - 0.5) * 2) * 0.875
+        if draw_new: draw_new(c)
+        with c.layer(alpha=1.0):
+            with c.tf(y=-e * (H + 400), rot=-9 * e, px=W * 0.15, py=H * 0.95, kx=0.0):
+                if draw_old: draw_old(c)
+                c.rect(-200, H - 60, W + 400, 300, shader=c.linear(0, H - 60, 0, H + 120, [(0.0, (0, 0, 0, 0.0)), (1.0, (0, 0, 0, 0.45 * (1 - e)))]))
+        c.rect(-200, H - e * (H + 400) - 10, W + 400, 70, shader=c.linear(0, H - e * (H + 400) - 10, 0, H - e * (H + 400) + 60, [(0.0, (0, 0, 0, 0.35)), (1.0, (0, 0, 0, 0.0))]), alpha=1 - e)
+    elif kind == 'deck':
+        # Kartendeck: alte Seite rutscht nach links hinten (kleiner, dunkler), neue kommt von rechts
+        e = A.in_out_cubic(k)
+        with c.layer(alpha=1 - 0.6 * e):
+            with c.tf(x=-e * W * 0.35, sx=1 - 0.12 * e, px=fmt.cx, py=fmt.cy):
+                if draw_old: draw_old(c)
+        with c.tf(x=(1 - e) * W * 1.05, rot=(1 - e) * 6, px=fmt.cx, py=H):
+            if draw_new: draw_new(c)
     elif kind == 'blinds':
         e = A.in_out_cubic(k)
         if draw_old: draw_old(c)
@@ -234,4 +252,4 @@ def transition(c, fmt, kind, k, theme, draw_old, draw_new):
             if draw_new: draw_new(c)
 
 
-TRANSITIONS = ['cut', 'fade', 'wipe', 'slide', 'slide_x', 'iris', 'zoom', 'flip', 'blinds']
+TRANSITIONS = ['cut', 'fade', 'wipe', 'slide', 'slide_x', 'iris', 'zoom', 'flip', 'blinds', 'peel', 'deck']
