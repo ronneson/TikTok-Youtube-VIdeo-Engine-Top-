@@ -137,10 +137,142 @@
    "why": "Übergang E2"
   },
   {
+   "t": 2.53,
+   "sfx": "peel",
+   "db": -12,
+   "why": "Peel E2"
+  },
+  {
+   "t": 2.58,
+   "sfx": "tick",
+   "db": -30,
+   "why": "Zählwerk"
+  },
+  {
+   "t": 2.635,
+   "sfx": "tick",
+   "db": -30,
+   "why": "Zählwerk"
+  },
+  {
+   "t": 2.69,
+   "sfx": "tick",
+   "db": -30,
+   "why": "Zählwerk"
+  },
+  {
+   "t": 2.745,
+   "sfx": "tick",
+   "db": -30,
+   "why": "Zählwerk"
+  },
+  {
+   "t": 2.8,
+   "sfx": "tick",
+   "db": -30,
+   "why": "Zählwerk"
+  },
+  {
    "t": 2.86,
-   "sfx": "card_hit",
+   "sfx": "card_hit_2",
    "db": -5,
    "why": "Nummer 2"
+  },
+  {
+   "t": 3.08,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
+   "t": 3.11,
+   "sfx": "pop_in",
+   "db": -6,
+   "why": "Badge im Album-Fach"
+  },
+  {
+   "t": 3.11,
+   "sfx": "shiny",
+   "db": -12,
+   "why": "Fach füllt sich"
+  },
+  {
+   "t": 3.125,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
+   "t": 3.17,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
+   "t": 4.23,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.263,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.296,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.329,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.33,
+   "sfx": "pop_in",
+   "db": -8,
+   "why": "Sticker bag"
+  },
+  {
+   "t": 4.362,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.395,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.428,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.461,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.494,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.527,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
   },
   {
    "t": 4.53,
@@ -149,14 +281,44 @@
    "why": "Stat E2"
   },
   {
+   "t": 4.56,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 4.593,
+   "sfx": "typewriter",
+   "db": -16,
+   "why": "Meta-Pille"
+  },
+  {
+   "t": 6.405,
+   "sfx": "riser",
+   "db": -12,
+   "why": "Riser vor #1"
+  },
+  {
    "t": 7.905,
-   "sfx": "card_whoosh",
-   "db": -8,
-   "why": "Übergang E1"
+   "sfx": "flash",
+   "db": -14,
+   "why": "Konfetti-Cut #1"
+  },
+  {
+   "t": 7.905,
+   "sfx": "confetti",
+   "db": -10,
+   "why": "Konfetti #1"
+  },
+  {
+   "t": 7.905,
+   "sfx": "flap",
+   "db": -12,
+   "why": "Elster-Lieferung"
   },
   {
    "t": 8.235,
-   "sfx": "card_hit",
+   "sfx": "card_hit_1",
    "db": -5,
    "why": "Nummer 1"
   },
@@ -167,10 +329,52 @@
    "why": "Nummer 1"
   },
   {
+   "t": 8.305,
+   "sfx": "hop",
+   "db": -12,
+   "why": "Odd landet"
+  },
+  {
+   "t": 8.455,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
+   "t": 8.485,
+   "sfx": "pop_in",
+   "db": -6,
+   "why": "Badge im Album-Fach"
+  },
+  {
+   "t": 8.485,
+   "sfx": "shiny",
+   "db": -12,
+   "why": "Fach füllt sich"
+  },
+  {
+   "t": 8.5,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
+   "t": 8.545,
+   "sfx": "pop_in",
+   "db": -10,
+   "why": "Titelwort"
+  },
+  {
    "t": 13.398,
    "sfx": "outro_chime",
    "db": -8,
    "why": "outro"
+  },
+  {
+   "t": 13.698,
+   "sfx": "confetti",
+   "db": -12,
+   "why": "Outro-Konfetti"
   },
   {
    "t": 15.277,
