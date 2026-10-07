@@ -42,7 +42,9 @@ python3 -m engine render curious-heists --workers 4   # -> projects/.../curious-
 - `render --budget 150` hört nach 150 s auf, neue Segmente zu beginnen; der nächste Aufruf macht weiter (fertige Segmente bleiben).
 - `stills <projekt> 1.5 "E5.1:syrup" 40` Standbilder nach Sekunden oder Wort; `seq <projekt> "E4.0" --span 1.4` Bildfolge um einen Übergang.
 - `loudness <datei>` misst LUFS und True Peak. `mask <projekt>` prüft, ob ein Ton die Stimme verdeckt.
-- `sounds`, `music`, `mascot`, `props`, `palette` rendern Übersichten nach `library/` (Töne/Musik als WAV zum Anhören).
+- `sounds`, `music`, `mascot`, `props`, `palette` rendern Übersichten nach `library/` (Töne/Musik als WAV zum Anhören); `brand` schreibt Profilbild und Zeichen nach `assets/brand/`.
+- Maskottchen **Odd** (Elster), Kostüme je Thema, Posen: siehe `STIL.md` Abschnitt 2 und `library/sheets/mascot.png`. Piktogramme: `library/sheets/props.png` (130 Stück), Kulissen: `library/sheets/backdrops.png`, Karten: `library/sheets/cards.png`.
+- Noch offene Feinarbeit an den Bausteinen (Sichtkritik der Art-Director-Agenten): `design/offene-punkte.md`.
 
 Ein geänderter **Text** braucht `tts` + `voice` neu (Credits). Geänderte **Bilder, Töne, Musik** brauchen nur `plan` + `render`.
 
@@ -76,6 +78,8 @@ Ein geänderter **Text** braucht `tts` + `voice` neu (Credits). Geänderte **Bil
 - **visual**: Kulisse (`backdrop`), Piktogramme (`props`: Name oder `{name, x, y, size, at, anim}`), Maskottchen (`mascot`: `pose, costume, expr, x, y, size, at`), Schlagworte (`keywords`), Bildwechsel innerhalb des Eintrags (`beats`: `[{at, props, mascot, backdrop}]`), Übergang (`transition`: wipe, slide, iris, zoom, flip, blinds, fade). `x, y` als Anteile der Bühne.
 - **stat**: Zahl, die beim Anker `at` hochzählt. **cues**: eigene Töne `[anker, ton, dB]`.
 - Länge: Hochformat 60–90 s ≈ 165–200 Wörter (ElevenLabs ≈ 150 Wörter/min). Querformat 8–12 min ≈ 1.300–1.800 Wörter, Top 10 mit 2–4 `beats` je Eintrag.
+- Weitere Felder: `"respect": true` am Eintrag oder Beat (Respekt-Modus für Todesfälle: gedämpfte Farben, Odd verbeugt sich, keine Gags), `"stamp": {"text": "NEVER FOUND", "at": "caught"}` (Gummistempel, höchstens einer je Eintrag), `"say": {"at": "wort"}` (Sprechblase „Odd.", höchstens einmal je Video), `"card_variant": "A"|"B"` (Elster-Lieferung oder Zählwerk), `"card_word"`/`"card_icon"` am Skript (Themenwort und Mini-Piktogramm auf der Karte), `"stat": {..., "count": false}` (nicht hochzählen; Zahlen unter 20 zählen nie).
+- Titel höchstens 24 Zeichen, Ort höchstens 12 Zeichen (nur die Stadt), Serienetikett höchstens 22 Zeichen; `words`/`plan` warnen sonst.
 - Mehr Kontrolle: eine `scenes.py` im Projektordner darf eigene Zeichenfunktionen liefern (siehe `ARCHITEKTUR.md`).
 
 ## Ordner

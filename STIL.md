@@ -577,3 +577,9 @@ Alternativen (der Nutzer entscheidet):
 - Töne: `mix.mask` meldet Töne, die ein Wort um weniger als 8 dB unterschreiten; `pop_in` ≤ 1 je 150 ms.
 - Bögen: `mascot.sheet` (120/240/420 px), `props.sheet` (120-px-Silhouettentest, Lichtrichtung oben links), `theme.sheet` (Kontrastpaare), `library/sfx` und `library/music` zum Anhören.
 - Telefonansicht (`engine phone`) entscheidet, nicht der Monitor: Hook-Frame 1, Karten-Landung, Mitte jedes Eintrags, Outro.
+
+## 12. Folgen bisher
+
+| Nr. | Projekt | Thema | Dauer | Besonderheiten | Stand |
+|---|---|---|---|---|---|
+| 001 | `projects/2026-10-07_curious-heists` | heist, Bett `heist_tiptoe`, Odd als `thief` | 82.8 s | Hook „Five real heists that sound made up", 5 Einträge (Käse 2024, Mona Lisa 1911, Antwerpen 2003, Tokio 1968, Ahornsirup 2012), Stats, Schlagworte, Beats (Wasser, Leiter), Skript-Cues `drip`/`splash` | Testvideo mit espeak-Platzhalterstimme; Fakten in `quellen.md` |
