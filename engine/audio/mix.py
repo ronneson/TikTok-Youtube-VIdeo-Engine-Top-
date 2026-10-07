@@ -21,7 +21,7 @@ import tempfile
 import zlib
 import numpy as np
 from scipy.ndimage import minimum_filter1d, uniform_filter1d
-from scipy.signal import lfilter, resample_poly
+from scipy.signal import resample_poly, sosfilt
 from . import SR, wav
 
 HOP = 240               # Steuerraster des Duckings: 5 ms bei 48 kHz
@@ -60,9 +60,11 @@ def build(project_dir: str, cfg: dict, root: str = None, music: str = None) -> d
     voice_raw, voice_dur = _load_voice(project_dir)
     if voice_dur > comp.duration + 0.01:
         warnings.append(f"voice.wav ({voice_dur:.2f} s) ist länger als das Video ({comp.duration:.2f} s): wird abgeschnitten")
-    voice_m = _lufs_measure(voice_raw)
+    voice_m = _lufs_measure(voice_raw, fast=True)
     voice_gain_db = _clamp(mcfg['voice_lufs'] - voice_m['lufs'], -24.0, 24.0) if _finite(voice_m['lufs']) else 0.0
     voice = _fit(voice_raw * wav.db(voice_gain_db), n_total)
+    if len(voice_raw) > n_total:
+        voice = _fade_edges(voice, 0.0, 0.01)       # harter Schnitt am Videoende: 10 ms ausblenden
     spans = [(w.t0, w.t1) for w in comp.tl.words]
     ref_db = voice_level_db(voice, spans)
 
@@ -80,7 +82,7 @@ def build(project_dir: str, cfg: dict, root: str = None, music: str = None) -> d
         target = duck_curve(voice, mcfg, ref_db)
         gain_db = target - bed_db
         music_st = (bed * wav.db(gain_db)[:, None]).astype(np.float32)
-        music_st = _fade_edges(music_st, 0.3, 1.0)
+        music_st = _fade_edges(music_st, 0.3, 0.5)
         music_gain_db = float(np.mean(gain_db))
         solo_db = ref_db + mcfg['music_solo_db']
         duck_db = float(solo_db - np.min(target))
@@ -153,7 +155,7 @@ def mask(project_dir: str, cfg: dict, root: str = None, min_db: float = MASK_WAR
     ref_db = mcfg['voice_lufs'] - 2.0     # grobe Annahme: RMS beim Sprechen etwas über der Lautheit
     if os.path.exists(os.path.join(project_dir, 'voice.wav')):
         voice_raw, _ = _load_voice(project_dir)
-        vm = _lufs_measure(voice_raw)
+        vm = _lufs_measure(voice_raw, fast=True)
         g = _clamp(mcfg['voice_lufs'] - vm['lufs'], -24.0, 24.0) if _finite(vm['lufs']) else 0.0
         voice = _fit(voice_raw * wav.db(g), n_total)
         ref_db = voice_level_db(voice, [(w.t0, w.t1) for w in words])
@@ -199,8 +201,10 @@ def duck_curve(voice: np.ndarray, mix_cfg: dict, ref_db: float = None, sr: int =
     env = _rms_at(v, idx, win)
     env = _ar_smooth(env, mcfg['duck_attack'], mcfg['duck_release'], hop, sr)
     env_db = 20.0 * np.log10(env + 1e-6)
-    # Sprach-Wahrscheinlichkeit: 0 unter ref-22 dB, 1 über ref-10 dB, dazwischen smoothstep
-    lo, hi = ref_db - 22.0, ref_db - 10.0
+    # Sprach-Wahrscheinlichkeit: 0 unter ref-18 dB, 1 über ref-9 dB, dazwischen smoothstep. Mit der
+    # Release-Hüllkurve ergibt das: kurze Pausen halten die Absenkung, nach dem Sprechen ist die Musik in
+    # etwa einer Sekunde wieder oben.
+    lo, hi = ref_db - 18.0, ref_db - 9.0
     p = np.clip((env_db - lo) / (hi - lo), 0.0, 1.0)
     p = p * p * (3.0 - 2.0 * p)
     # Träger Stimmpegel für den Musikpegel beim Sprechen: folgt der Hüllkurve nur während der Sprache
@@ -297,20 +301,28 @@ def sections_from(comp) -> list:
 def placeholder_bed(duration: float, seed: int = 0, sr: int = SR, level_db: float = -30.0) -> np.ndarray:
     """Leises Platzhalterbett: weicher Sinus-Pad-Akkord aus drei Tönen mit langsamer Lautstärke-LFO.
 
-    Leicht verstimmt zwischen links und rechts, auf level_db (RMS) normiert, deterministisch aus seed.
+    Stereo durch gegenläufige, langsame Phasenmodulation (bleibt monokompatibel: keine Auslöschung),
+    auf level_db (RMS je Kanal) normiert, deterministisch aus seed. Die Teiltöne bleiben unter 600 Hz,
+    darum wird bei sr/4 gerechnet und 4-fach hochgetastet (ein 90-s-Bett in deutlich unter einer Sekunde).
     """
     n = max(1, int(round(duration * sr)))
-    t = np.arange(n, dtype=np.float64) / sr
+    up = 4
+    n4 = -(-n // up)
+    t = np.arange(n4, dtype=np.float64) * (up / sr)
     rng = np.random.default_rng(int(seed) & 0xFFFFFFFF)
     root = float(rng.choice([98.0, 110.0, 123.47, 130.81]))     # G2, A2, H2, C3
     third = 1.2 if rng.random() < 0.5 else 1.25                 # kleine oder große Terz
-    out = np.zeros((n, 2), np.float64)
+    out = np.zeros((n4, 2), np.float64)
     for i, f in enumerate((root, root * third, root * 1.5)):
         ph = rng.random() * 2 * np.pi
         lfo = 0.65 + 0.35 * np.sin(2 * np.pi * (0.04 + 0.015 * i) * t + ph)
-        for ch, det in ((0, 1.0015), (1, 1 / 1.0015)):
-            w = 2 * np.pi * f * det * t
-            out[:, ch] += lfo * (np.sin(w) + 0.25 * np.sin(2 * w) + 0.08 * np.sin(3 * w))
+        wob = 0.6 * np.sin(2 * np.pi * (0.3 + 0.07 * i) * t + ph)     # ±0,6 rad: nie gegenphasig
+        for ch, sign in ((0, 1.0), (1, -1.0)):
+            sw = np.sin(2 * np.pi * f * t + sign * wob)
+            cw = np.cos(2 * np.pi * f * t + sign * wob)
+            # sin 2w = 2 sin w cos w, sin 3w = sin w (3 - 4 sin² w): zwei transzendente Aufrufe statt drei
+            out[:, ch] += lfo * (sw + 0.5 * sw * cw + 0.08 * sw * (3.0 - 4.0 * sw * sw))
+    out = resample_poly(out, up, 1, axis=0)[:n]
     fade = min(n, int(sr * 1.0))
     out[:fade] *= np.linspace(0.0, 1.0, fade)[:, None]
     rms = float(np.sqrt(np.mean(out ** 2)))
@@ -343,7 +355,10 @@ def _seed(comp) -> int:
     """Deterministischer Seed des Projekts: script['seed'] oder CRC des Slugs."""
     s = comp.script.get('seed')
     if s is not None:
-        return int(s)
+        try:
+            return int(s)
+        except (TypeError, ValueError):
+            return zlib.crc32(str(s).encode('utf-8')) & 0xFFFF
     return zlib.crc32(str(comp.script.get('slug', 'x')).encode('utf-8')) & 0xFFFF
 
 
@@ -410,14 +425,21 @@ def _plan_cues(comp, mcfg: dict, voice, ref_db: float, n_total: int, sr: int = S
     return placed, missing, skipped
 
 
-def _render_cues(placed: list, n_total: int) -> np.ndarray:
-    """Alle geplanten Töne mit ihrem Gain in eine Stereospur summieren (am Ende abgeschnitten)."""
+def _render_cues(placed: list, n_total: int, sr: int = SR) -> np.ndarray:
+    """Alle geplanten Töne mit ihrem Gain in eine Stereospur summieren; was über das Videoende hinausragt,
+    wird abgeschnitten und über die letzten 10 ms ausgeblendet (kein Knacken am Schluss)."""
     out = np.zeros((n_total, 2), np.float32)
+    edge = max(1, int(round(0.01 * sr)))
     for c in placed:
         s, n0 = c['sound'], c['n0']
         n1 = min(n_total, n0 + len(s))
-        if n1 > n0:
-            out[n0:n1] += s[:n1 - n0] * c['gain']
+        if n1 <= n0:
+            continue
+        seg = s[:n1 - n0] * np.float32(c['gain'])
+        if n1 - n0 < len(s):
+            k = min(edge, len(seg))
+            seg[-k:] *= np.linspace(1.0, 0.0, k, dtype=np.float32)[:, None]
+        out[n0:n1] += seg
     return out
 
 
@@ -478,7 +500,7 @@ def master(x: np.ndarray, target_lufs: float, true_peak_db_max: float, sr: int =
     (höchstens +2 dB). Gibt (Signal, Messwerte) zurück.
     """
     x = np.asarray(x, np.float32)
-    m0 = _lufs_measure(x)
+    m0 = _lufs_measure(x, fast=True)
     gain_db = _clamp(target_lufs - m0['lufs'], -30.0, 30.0) if _finite(m0['lufs']) else 0.0
     ceiling = true_peak_db_max - TP_MARGIN_DB
     y, red = limit(x * wav.db(gain_db), ceiling, sr=sr)
@@ -570,30 +592,38 @@ def lufs_numpy(x: np.ndarray, sr: int = SR) -> float:
     if sr != 48000:
         d = wav.resample(d, sr, 48000).astype(np.float64)
         sr = 48000
-    b1, a1 = [1.53512485958697, -2.69169618940638, 1.19839281085285], [1.0, -1.69065929318241, 0.73248077421585]
-    b2, a2 = [1.0, -2.0, 1.0], [1.0, -1.99004745483398, 0.99007225036621]
-    k = lfilter(b2, a2, lfilter(b1, a1, d, axis=0), axis=0)
+    # K-Filter (Kuhschwanz + Hochpass) als zwei Biquads; gerechnet auf (Kanäle, n), das ist in scipy um ein
+    # Vielfaches schneller als entlang der ersten Achse eines (n, 2)-Arrays.
+    sos = np.array([[1.53512485958697, -2.69169618940638, 1.19839281085285, 1.0, -1.69065929318241, 0.73248077421585],
+                    [1.0, -2.0, 1.0, 1.0, -1.99004745483398, 0.99007225036621]])
+    k = sosfilt(sos, np.ascontiguousarray(d.T), axis=-1)
+    power = np.einsum('ij,ij->j', k, k)            # Summe der Kanalleistungen je Sample (L und R mit Gewicht 1)
     blk, hop = int(0.4 * sr), int(0.1 * sr)
-    if len(k) < blk:
-        k = np.concatenate([k, np.zeros((blk - len(k), k.shape[1]))])
-    cs = np.concatenate([np.zeros((1, k.shape[1])), np.cumsum(k ** 2, axis=0)])
-    starts = np.arange(0, len(k) - blk + 1, hop)
+    if len(power) < blk:
+        power = np.concatenate([power, np.zeros(blk - len(power))])
+    cs = np.concatenate([[0.0], np.cumsum(power)])
+    starts = np.arange(0, len(power) - blk + 1, hop)
     z = (cs[starts + blk] - cs[starts]) / blk
-    lk = -0.691 + 10.0 * np.log10(z.sum(axis=1) + 1e-20)
+    lk = -0.691 + 10.0 * np.log10(z + 1e-20)
     keep = lk > -70.0
     if not keep.any():
         return float('-inf')
-    rel = -0.691 + 10.0 * np.log10(z[keep].sum(axis=1).mean()) - 10.0
+    rel = -0.691 + 10.0 * np.log10(z[keep].mean()) - 10.0
     keep &= lk > rel
     if not keep.any():
         return float('-inf')
-    return float(-0.691 + 10.0 * np.log10(z[keep].sum(axis=1).mean()))
+    return float(-0.691 + 10.0 * np.log10(z[keep].mean()))
 
 
-def _lufs_measure(data: np.ndarray, sr: int = SR) -> dict:
+def _lufs_measure(data: np.ndarray, sr: int = SR, fast: bool = False) -> dict:
     """Lautheit (LUFS) und True Peak: über eine temporäre WAV mit wav.measure_lufs (ffmpeg), ohne ffmpeg mit
-    lufs_numpy/true_peak_db. Für die Messung wird das Signal sicher unter Vollaussteuerung skaliert."""
+    lufs_numpy/true_peak_db. Für die Messung wird das Signal sicher unter Vollaussteuerung skaliert.
+
+    fast=True misst nur die Lautheit mit lufs_numpy (ohne ffmpeg, ohne True Peak; weicht um < 0,1 LU ab) für
+    Zwischenschritte, deren Wert nur den Gain bestimmt; die Endkontrolle bleibt bei ffmpeg."""
     d = np.asarray(data, np.float32)
+    if fast:
+        return {'lufs': lufs_numpy(d, sr), 'true_peak': None, 'source': 'numpy'}
     pk = float(np.max(np.abs(d))) if d.size else 0.0
     scale = 1.0 if pk <= 0.5 else 0.5 / pk
     off = -20.0 * np.log10(scale)
@@ -666,10 +696,11 @@ def _fade_edges(x: np.ndarray, fade_in: float, fade_out: float, sr: int = SR) ->
     n = len(x)
     a, b = min(n, int(fade_in * sr)), min(n, int(fade_out * sr))
     y = x.copy()
+    shape = (-1,) + (1,) * (x.ndim - 1)
     if a > 1:
-        y[:a] *= np.linspace(0.0, 1.0, a, dtype=np.float32)[:, None]
+        y[:a] *= np.linspace(0.0, 1.0, a, dtype=np.float32).reshape(shape)
     if b > 1:
-        y[n - b:] *= np.linspace(1.0, 0.0, b, dtype=np.float32)[:, None]
+        y[n - b:] *= np.linspace(1.0, 0.0, b, dtype=np.float32).reshape(shape)
     return y
 
 

@@ -9,3 +9,5 @@ library/sfx/*.wav
 library/music/*.wav
 .DS_Store
 *.log
+projects/*/*.wav
+projects/*/stems/

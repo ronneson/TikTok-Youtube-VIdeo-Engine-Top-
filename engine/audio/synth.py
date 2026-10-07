@@ -182,6 +182,8 @@ def fm(carrier, mod, index, dur: float, phase: float = 0.0) -> np.ndarray:
 
 def supersaw(freq, dur: float, n: int = 5, detune: float = 0.01, seed: int = 0) -> np.ndarray:
     """n leicht verstimmte Sägezähne (±detune relativ, zufällige Startphasen) auf Spitze 1 normiert."""
+    if seconds_to_samples(dur) == 0:
+        return np.zeros(0, np.float32)
     n = max(1, int(n))
     rng = np.random.default_rng(seed)
     ratios = 1.0 + detune * np.linspace(-1.0, 1.0, n) if n > 1 else np.array([1.0])
@@ -245,10 +247,13 @@ def env_lin(points) -> np.ndarray:
 
 
 def apply(sig: np.ndarray, env: np.ndarray) -> np.ndarray:
-    """Signal mit Hüllkurve multiplizieren (kürzere Hüllkurve wird mit 0 verlängert, längere abgeschnitten)."""
+    """Signal mit Hüllkurve multiplizieren (kürzere Hüllkurve wird mit 0 verlängert, längere abgeschnitten; Zahl = fester Faktor)."""
     sig = _f32(sig)
-    env = _f32(env).ravel()
+    env = _f32(env)
     n = len(sig)
+    if env.ndim == 0:
+        return _f32(sig * float(env))
+    env = env.ravel()
     if len(env) < n:
         env = np.concatenate([env, np.zeros(n - len(env), np.float32)])
     else:
@@ -586,15 +591,18 @@ def widen(stereo: np.ndarray, amount: float = 0.5) -> np.ndarray:
     return _f32(np.stack([mid + side, mid - side], axis=1))
 
 
-def mixdown(items, tail: float = 0.0) -> np.ndarray:
-    """Spuren zusammenmischen: ``items`` = [(signal, offset_s=0, gain_db=0), ...] -> Stereo, Länge nach dem längsten Ende (+ ``tail``)."""
+def mixdown(items, tail: float = 0.0, peak_db: float = None) -> np.ndarray:
+    """Spuren zusammenmischen: ``items`` = [(signal, offset_s=0, gain_db=0), ...] -> Stereo, Länge nach dem längsten Ende (+ ``tail``).
+
+    Summiert ohne Begrenzung; ``peak_db`` (z. B. -1) normiert das Ergebnis zusätzlich auf diesen Spitzenpegel.
+    """
     rows = []
     end = 0
     for it in items:
         if isinstance(it, np.ndarray):
             it = (it,)
         s = to_stereo(_f32(it[0]))
-        off = seconds_to_samples(it[1]) if len(it) > 1 else 0
+        off = int(round(float(it[1]) * SR)) if len(it) > 1 else 0   # darf negativ sein (Anfang wird abgeschnitten)
         gain = db(it[2]) if len(it) > 2 else 1.0
         if off < 0:
             s, off = s[-off:], 0
@@ -603,7 +611,7 @@ def mixdown(items, tail: float = 0.0) -> np.ndarray:
     out = np.zeros((end + seconds_to_samples(tail), 2), np.float64)
     for s, off, gain in rows:
         out[off:off + len(s)] += s * gain
-    return _f32(out)
+    return normalize(out, peak_db) if peak_db is not None else _f32(out)
 
 
 mix = mixdown

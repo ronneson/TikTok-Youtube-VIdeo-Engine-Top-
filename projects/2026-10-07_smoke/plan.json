@@ -2,9 +2,9 @@
  "title": "Smoke Test",
  "format": "portrait",
  "fps": 30,
- "duration": 16.912,
+ "duration": 17.027,
  "voice_source": "espeak",
- "voice_end": 14.912,
+ "voice_end": 15.027,
  "words": 36,
  "theme": "curious",
  "scenes": [
@@ -12,7 +12,7 @@
    "id": "hook",
    "kind": "hook",
    "t0": 0.0,
-   "t1": 2.572,
+   "t1": 2.53,
    "rank": null,
    "trans_in": "fade",
    "lines": [
@@ -22,8 +22,8 @@
   {
    "id": "E2",
    "kind": "entry",
-   "t0": 2.572,
-   "t1": 8.038,
+   "t0": 2.53,
+   "t1": 7.905,
    "rank": 2,
    "trans_in": "wipe",
    "lines": [
@@ -35,8 +35,8 @@
   {
    "id": "E1",
    "kind": "entry",
-   "t0": 8.038,
-   "t1": 13.181,
+   "t0": 7.905,
+   "t1": 13.098,
    "rank": 1,
    "trans_in": "wipe",
    "lines": [
@@ -48,8 +48,8 @@
   {
    "id": "outro",
    "kind": "outro",
-   "t0": 13.181,
-   "t1": 16.912,
+   "t0": 13.098,
+   "t1": 17.027,
    "rank": null,
    "trans_in": "fade",
    "lines": [
@@ -61,63 +61,63 @@
   {
    "id": "H1",
    "t0": 0.25,
-   "t1": 2.395,
+   "t1": 2.55,
    "text": "These five heists were too dumb to be fake.",
    "kind": "hook",
    "mismatch": false
   },
   {
    "id": "E2.0",
-   "t0": 2.872,
-   "t1": 4.807,
+   "t0": 2.83,
+   "t1": 4.938,
    "text": "Number two. The Second Thing.",
    "kind": "announce",
    "mismatch": false
   },
   {
    "id": "E2.1",
-   "t0": 5.549,
-   "t1": 6.79,
+   "t0": 5.468,
+   "t1": 6.882,
    "text": "Second sentence here.",
    "kind": "entry",
    "mismatch": false
   },
   {
    "id": "E2.2",
-   "t0": 7.284,
-   "t1": 7.888,
+   "t0": 7.162,
+   "t1": 7.925,
    "text": "And a twist.",
    "kind": "entry",
    "mismatch": false
   },
   {
    "id": "E1.0",
-   "t0": 8.338,
-   "t1": 10.177,
+   "t0": 8.205,
+   "t1": 10.342,
    "text": "Number one. The First Thing.",
    "kind": "announce",
    "mismatch": false
   },
   {
    "id": "E1.1",
-   "t0": 10.927,
-   "t1": 12.03,
+   "t0": 10.872,
+   "t1": 12.183,
    "text": "First sentence here.",
    "kind": "entry",
    "mismatch": false
   },
   {
    "id": "E1.2",
-   "t0": 12.547,
-   "t1": 13.005,
+   "t0": 12.463,
+   "t1": 13.118,
    "text": "The payoff.",
    "kind": "entry",
    "mismatch": false
   },
   {
    "id": "O1",
-   "t0": 13.481,
-   "t1": 14.912,
+   "t0": 13.398,
+   "t1": 15.027,
    "text": "Which one would you have tried?",
    "kind": "outro",
    "mismatch": false
@@ -131,57 +131,57 @@
    "why": "hook"
   },
   {
-   "t": 2.572,
+   "t": 2.53,
    "sfx": "card_whoosh",
    "db": -8,
    "why": "Übergang E2"
   },
   {
-   "t": 2.902,
+   "t": 2.86,
    "sfx": "card_hit",
    "db": -5,
    "why": "Nummer 2"
   },
   {
-   "t": 8.038,
+   "t": 4.53,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E2"
+  },
+  {
+   "t": 7.905,
    "sfx": "card_whoosh",
    "db": -8,
    "why": "Übergang E1"
   },
   {
-   "t": 8.368,
+   "t": 8.235,
    "sfx": "card_hit",
    "db": -5,
    "why": "Nummer 1"
   },
   {
-   "t": 8.398,
+   "t": 8.265,
    "sfx": "number_one",
    "db": -5,
    "why": "Nummer 1"
   },
   {
-   "t": 13.481,
+   "t": 13.398,
    "sfx": "outro_chime",
    "db": -8,
    "why": "outro"
   },
   {
-   "t": 15.162,
+   "t": 15.277,
    "sfx": "end_sting",
    "db": -7,
    "why": "Schluss"
-  },
-  {
-   "t": 42.0,
-   "sfx": "stat_pop",
-   "db": -9,
-   "why": "Stat E2"
   }
  ],
  "warnings": [
-  "Szene E2 dauert nur 5.5 s (unter 6 s wirkt gehetzt)",
-  "Szene E1 dauert nur 5.1 s (unter 6 s wirkt gehetzt)",
-  "Video nur 16.9 s lang (unter 60 s)"
+  "Szene E2 dauert nur 5.4 s (unter 6 s wirkt gehetzt)",
+  "Szene E1 dauert nur 5.2 s (unter 6 s wirkt gehetzt)",
+  "Video nur 17.0 s lang (unter 60 s)"
  ]
 }

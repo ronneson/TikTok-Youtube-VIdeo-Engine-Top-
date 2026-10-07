@@ -87,8 +87,14 @@ class Composition:
                     out.append({'t': round(sc.t0 + sc.trans_dur * 0.6, 3), 'sfx': 'number_one', 'db': -5, 'why': 'Nummer 1'})
                 st = (sc.entry or {}).get('stat')
                 if st:
-                    anchor = st.get('at') or st.get('value', '')
-                    tt = self.tl.at(anchor, default=sc.t0 + 2.0) if anchor else sc.t0 + 2.0
+                    # 'at' ist ein Anker (Wort oder Sekunden ab Szenenbeginn); ohne 'at' wird der Wert nur als
+                    # gesprochenes Wort gesucht, nie als Zeit (sonst läge "42" bei 42 s), sonst 2 s nach Szenenbeginn.
+                    default = sc.t0 + 2.0
+                    at = st.get('at')
+                    if at not in (None, ''):
+                        tt = sc.t0 + float(at) if isinstance(at, (int, float)) else self.tl.at(at, default=default)
+                    else:
+                        tt = self._stat_word_time(sc, str(st.get('value', '')).strip(), default)
                     out.append({'t': round(tt, 3), 'sfx': 'stat_pop', 'db': -9, 'why': f'Stat {sc.id}'})
             elif sc.kind == 'outro':
                 out.append({'t': round(sc.t0 + 0.3, 3), 'sfx': 'outro_chime', 'db': -8, 'why': 'outro'})
@@ -105,6 +111,20 @@ class Composition:
         end = self.tl.voice_end()
         out.append({'t': round(end + 0.25, 3), 'sfx': 'end_sting', 'db': -7, 'why': 'Schluss'})
         return sorted(out, key=lambda c: c['t'])
+
+    def _stat_word_time(self, sc, value: str, default: float) -> float:
+        """Beginn des gesprochenen Stat-Werts: erst in den Zeilen der Szene, dann im ganzen Text; sonst default."""
+        if not value:
+            return default
+        pools = [ln.id for ln in sc.lines] + [None]
+        for lid in pools:
+            try:
+                w = self.tl.find(value, lid)
+            except Exception:
+                w = None
+            if w is not None:
+                return w.t0
+        return default
 
     def warnings(self) -> list:
         w = []
