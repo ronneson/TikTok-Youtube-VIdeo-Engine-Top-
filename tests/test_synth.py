@@ -346,3 +346,22 @@ def test_instrument_pitch_and_seed():
     assert not np.array_equal(s.pluck(220.0, 0.3, seed=0), s.pluck(220.0, 0.3, seed=1))
     assert _rms(s.kick(0.4)[-2000:]) < 0.02                              # klingt aus
     assert _rms(s.hat(0.3, open=True)[7000:9000]) > _rms(s.hat(0.3, open=False)[7000:9000])
+
+
+# --------------------------------------------------------------------------- Randfälle (Review)
+
+def test_apply_scalar_and_zero_length_edge_cases():
+    """apply mit Zahl = fester Faktor (nicht nur das erste Sample); Länge 0 darf nirgends abstürzen."""
+    out = s.apply(np.ones(100, np.float32), 0.5)
+    assert out.shape == (100,) and np.allclose(out, 0.5)
+    assert np.allclose(s.apply(np.ones((10, 2), np.float32), np.float32(2.0)), 2.0)
+    assert s.supersaw(110.0, 0.0).shape == (0,)
+    assert s.pad_synth(110.0, 0.0).shape == (0, 2)
+    for fn in (s.click, s.kick, s.snare, s.hat):
+        assert fn(0.0).shape == (0,)
+    for fn in (s.pluck, s.bell, s.bass):
+        assert fn(220.0, 0.0).shape == (0,)
+    for osc in (s.sine, s.saw, s.square, s.tri):
+        assert osc(440.0, 0.0).shape == (0,) and osc(440.0, 1 / SR).shape == (1,)
+    assert s.delay(np.zeros(0, np.float32), 0.1).shape[0] >= 0
+    assert s.reverb(np.zeros(0, np.float32), decay=0.1).shape == (0, 2)

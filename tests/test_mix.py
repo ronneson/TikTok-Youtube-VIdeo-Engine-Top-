@@ -228,3 +228,88 @@ def test_sections_and_placeholders():
     assert np.array_equal(bed, mix.placeholder_bed(2.0, seed=3))  # deterministisch
     blip = mix.placeholder_blip()
     assert blip.shape == (int(0.06 * SR), 2) and float(np.abs(blip).max()) <= 0.5
+
+
+# --- Randfälle (Review) ------------------------------------------------------------------------------------------
+
+def test_truncated_cue_fades_out_at_video_end():
+    """Ein Ton, der über das Videoende hinausragt, wird abgeschnitten und in den letzten 10 ms ausgeblendet."""
+    n_total = SR // 2
+    snd = np.ones((SR, 2), np.float32) * 0.5                     # 1 s Dauerton, Video nur 0,5 s
+    placed = [{'sound': snd, 'n0': n_total - SR // 4, 'gain': 1.0}]
+    out = mix._render_cues(placed, n_total)
+    assert out.shape == (n_total, 2)
+    assert abs(out[-1, 0]) < 1e-6 and abs(out[-480, 0] - 0.5) < 1e-3   # letztes Sample 0, 10 ms davor voll
+    assert np.all(np.diff(out[-480:, 0]) <= 1e-6)                        # monoton fallend, kein Sprung
+    # Ton, der ins Video passt, bleibt unverändert
+    placed = [{'sound': snd[:SR // 8], 'n0': 0, 'gain': 2.0}]
+    out = mix._render_cues(placed, n_total)
+    assert np.allclose(out[:SR // 8], 1.0) and np.all(out[SR // 8:] == 0.0)
+
+
+def test_fade_edges_mono_and_stereo():
+    m = mix._fade_edges(np.ones(1000, np.float32), 0.01, 0.01)
+    assert m.shape == (1000,) and m[0] == 0.0 and m[-1] == 0.0 and m[500] == 1.0
+    st = mix._fade_edges(np.ones((1000, 2), np.float32), 0.0, 0.01)
+    assert st.shape == (1000, 2) and st[0, 0] == 1.0 and st[-1, 1] == 0.0
+
+
+def test_lufs_numpy_mono_and_fast_measure():
+    t = np.arange(SR * 2) / SR
+    s = (0.25 * np.sin(2 * np.pi * 1000 * t)).astype(np.float32)
+    mono = mix.lufs_numpy(s)
+    st = mix.lufs_numpy(np.stack([s, s], axis=1))
+    assert abs(st - mono - 3.0103) < 0.05                        # zwei gleiche Kanäle: +3 dB
+    assert abs(mono - (-12.0 - 0.691 - 3.0103 + 0.691 - 0.0)) < 1.5  # grob: -15 LUFS (Sinus -12 dBFS RMS, 1 kHz)
+    m = mix._lufs_measure(s, fast=True)
+    assert m['source'] == 'numpy' and m['true_peak'] is None and abs(m['lufs'] - mono) < 1e-9
+    full = mix._lufs_measure(s)
+    assert abs(full['lufs'] - mono) < 0.3
+
+
+def test_seed_is_robust():
+    import types
+    assert mix._seed(types.SimpleNamespace(script={'seed': 7})) == 7
+    assert mix._seed(types.SimpleNamespace(script={'seed': '11'})) == 11
+    s = mix._seed(types.SimpleNamespace(script={'seed': 'abc', 'slug': 'x'}))
+    assert isinstance(s, int) and 0 <= s <= 0xFFFF
+    assert mix._seed(types.SimpleNamespace(script={'slug': 'y'})) == mix._seed(types.SimpleNamespace(script={'slug': 'y'}))
+
+
+def test_stat_cue_value_is_a_word_not_seconds(project):
+    """stat.value ohne 'at': als gesprochenes Wort gesucht (erst in der Szene), nie als Sekunden; sonst 2 s nach Szenenbeginn."""
+    from engine import compose
+    p = os.path.join(project, 'script.json')
+    script = json.loads(open(p, encoding='utf-8').read())
+    script['entries'][0]['stat'] = {'value': 'line', 'label': 'X'}        # Rang 2: 'line.' kommt in E2.1 und E1.1 vor
+    script['entries'][1]['stat'] = {'value': '42', 'label': 'UNITS'}      # Rang 1: nicht gesprochen -> Standard
+    open(p, 'w', encoding='utf-8').write(json.dumps(script))
+    comp = compose.load(project, ROOT)
+    pops = {c['why']: c['t'] for c in comp.cues() if c['sfx'] == 'stat_pop'}
+    e2 = [sc for sc in comp.scenes if sc.kind == 'entry' and sc.rank == 2][0]
+    e1 = [sc for sc in comp.scenes if sc.kind == 'entry' and sc.rank == 1][0]
+    assert abs(pops[f'Stat {e2.id}'] - 3.25) < 1e-3                       # 'line.' der eigenen Szene (E2.1), nicht E1.1
+    assert abs(pops[f'Stat {e1.id}'] - (e1.t0 + 2.0)) < 1e-3
+    assert all(0 <= t < comp.duration for t in pops.values())
+    script['entries'][1]['stat'] = {'value': '42', 'at': 1.5}
+    open(p, 'w', encoding='utf-8').write(json.dumps(script))
+    comp = compose.load(project, ROOT)
+    t1 = [c['t'] for c in comp.cues() if c['why'] == f'Stat {e1.id}'][0]
+    assert abs(t1 - (e1.t0 + 1.5)) < 1e-3                                 # Zahl bei 'at' = Sekunden ab Szenenbeginn
+
+
+def test_build_fades_truncated_voice(project, monkeypatch):
+    """Ist voice.wav länger als das Video (tail 0), wird sie abgeschnitten, gewarnt und am Ende ausgeblendet."""
+    monkeypatch.setattr(mix, '_optional', lambda name: None)
+    p = os.path.join(project, 'script.json')
+    script = json.loads(open(p, encoding='utf-8').read())
+    script['tail'] = 0.0
+    open(p, 'w', encoding='utf-8').write(json.dumps(script))
+    voice = _synth_voice(WORDS)[:int(7.0 * SR)]                           # ab 7,0 s (im letzten Wort) ein 1-s-Dauerton:
+    voice = np.concatenate([voice, np.full(SR, 0.2, np.float32)])        # er ragt über das Videoende (7,25 s) hinaus
+    wav.write(os.path.join(project, 'voice.wav'), voice, SR)
+    res = mix.build(project, _cfg(stems=True), ROOT, music='none')
+    assert any('abgeschnitten' in w for w in res['warnings'])
+    v, _ = wav.read(os.path.join(res['stems'], 'voice_stem.wav'), SR)
+    assert res['samples'] == int(round(WORDS[-1][3] * SR))
+    assert abs(v[-1]).max() < 1e-3 and abs(v[-600]).max() > 0.05          # Ende 0, 12 ms davor noch Signal
