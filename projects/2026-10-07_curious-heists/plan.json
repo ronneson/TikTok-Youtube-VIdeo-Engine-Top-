@@ -1,0 +1,420 @@
+{
+ "title": "Top 5 Curious Heists",
+ "format": "portrait",
+ "fps": 30,
+ "duration": 82.769,
+ "voice_source": "espeak",
+ "voice_end": 80.569,
+ "words": 194,
+ "theme": "heist",
+ "scenes": [
+  {
+   "id": "hook",
+   "kind": "hook",
+   "t0": 0.0,
+   "t1": 2.612,
+   "rank": null,
+   "trans_in": "fade",
+   "lines": [
+    "H1"
+   ]
+  },
+  {
+   "id": "E5",
+   "kind": "entry",
+   "t0": 2.612,
+   "t1": 18.716,
+   "rank": 5,
+   "trans_in": "wipe",
+   "lines": [
+    "E5.0",
+    "E5.1",
+    "E5.2",
+    "E5.3"
+   ]
+  },
+  {
+   "id": "E4",
+   "kind": "entry",
+   "t0": 18.716,
+   "t1": 32.561,
+   "rank": 4,
+   "trans_in": "wipe",
+   "lines": [
+    "E4.0",
+    "E4.1",
+    "E4.2",
+    "E4.3"
+   ]
+  },
+  {
+   "id": "E3",
+   "kind": "entry",
+   "t0": 32.561,
+   "t1": 45.802,
+   "rank": 3,
+   "trans_in": "wipe",
+   "lines": [
+    "E3.0",
+    "E3.1",
+    "E3.2",
+    "E3.3"
+   ]
+  },
+  {
+   "id": "E2",
+   "kind": "entry",
+   "t0": 45.802,
+   "t1": 60.71,
+   "rank": 2,
+   "trans_in": "wipe",
+   "lines": [
+    "E2.0",
+    "E2.1",
+    "E2.2",
+    "E2.3"
+   ]
+  },
+  {
+   "id": "E1",
+   "kind": "entry",
+   "t0": 60.71,
+   "t1": 78.637,
+   "rank": 1,
+   "trans_in": "wipe",
+   "lines": [
+    "E1.0",
+    "E1.1",
+    "E1.2",
+    "E1.3",
+    "E1.4"
+   ]
+  },
+  {
+   "id": "outro",
+   "kind": "outro",
+   "t0": 78.637,
+   "t1": 82.769,
+   "rank": null,
+   "trans_in": "fade",
+   "lines": [
+    "O1"
+   ]
+  }
+ ],
+ "lines": [
+  {
+   "id": "H1",
+   "t0": 0.238,
+   "t1": 2.312,
+   "text": "Five real heists that sound made up.",
+   "kind": "hook",
+   "mismatch": false
+  },
+  {
+   "id": "E5.0",
+   "t0": 2.912,
+   "t1": 3.722,
+   "text": "Number five.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E5.1",
+   "t0": 4.227,
+   "t1": 11.444,
+   "text": "In 2024, a scammer posing as a French distributor ordered 22 tonnes of artisan cheddar from a London dairy.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E5.2",
+   "t0": 11.71,
+   "t1": 15.677,
+   "text": "950 wheels, worth about 300,000 pounds.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E5.3",
+   "t0": 15.944,
+   "t1": 18.369,
+   "text": "The dairy delivered. The money never came.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E4.0",
+   "t0": 19.016,
+   "t1": 19.76,
+   "text": "Number four.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E4.1",
+   "t0": 20.265,
+   "t1": 25.624,
+   "text": "In 1911, a former Louvre worker tucked the Mona Lisa under his smock and walked out.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E4.2",
+   "t0": 25.89,
+   "t1": 29.457,
+   "text": "Nobody noticed for a day. Police even questioned Picasso.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E4.3",
+   "t0": 29.724,
+   "t1": 32.213,
+   "text": "It surfaced two years later, in Florence.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E3.0",
+   "t0": 32.861,
+   "t1": 33.562,
+   "text": "Number three.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E3.1",
+   "t0": 34.067,
+   "t1": 39.829,
+   "text": "In 2003, a crew beat 10 layers of security and took over 100 million in diamonds.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E3.2",
+   "t0": 40.095,
+   "t1": 42.162,
+   "text": "Then they dumped their trash in a forest.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E3.3",
+   "t0": 42.429,
+   "t1": 45.454,
+   "text": "A half-eaten sandwich with the leader's DNA got him caught.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E2.0",
+   "t0": 46.102,
+   "t1": 46.783,
+   "text": "Number two.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E2.1",
+   "t0": 47.288,
+   "t1": 55.11,
+   "text": "In 1968, a fake motorcycle cop stopped a bank car in Tokyo, lit a road flare under it, and yelled bomb.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E2.2",
+   "t0": 55.377,
+   "t1": 59.352,
+   "text": "The guards ran. He drove off with 294 million yen.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E2.3",
+   "t0": 59.619,
+   "t1": 60.314,
+   "text": "Never caught.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.0",
+   "t0": 61.01,
+   "t1": 61.716,
+   "text": "Number one.",
+   "kind": "announce",
+   "mismatch": false
+  },
+  {
+   "id": "E1.1",
+   "t0": 62.221,
+   "t1": 70.743,
+   "text": "In 2012, thieves drained 9,500 barrels of maple syrup, worth 18 million dollars, from Canada's strategic reserve.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.2",
+   "t0": 71.01,
+   "t1": 72.503,
+   "text": "Yes, that exists.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.3",
+   "t0": 72.77,
+   "t1": 74.43,
+   "text": "They refilled the barrels with water.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "E1.4",
+   "t0": 74.697,
+   "t1": 78.223,
+   "text": "An auditor only noticed when he climbed a barrel, and nearly fell in.",
+   "kind": "entry",
+   "mismatch": false
+  },
+  {
+   "id": "O1",
+   "t0": 78.937,
+   "t1": 80.569,
+   "text": "Which one would you have pulled off?",
+   "kind": "outro",
+   "mismatch": false
+  }
+ ],
+ "cues": [
+  {
+   "t": 0.05,
+   "sfx": "hook_hit",
+   "db": -6,
+   "why": "hook"
+  },
+  {
+   "t": 2.612,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E5"
+  },
+  {
+   "t": 2.942,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 5"
+  },
+  {
+   "t": 8.493,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E5"
+  },
+  {
+   "t": 18.716,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E4"
+  },
+  {
+   "t": 19.046,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 4"
+  },
+  {
+   "t": 30.375,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E4"
+  },
+  {
+   "t": 32.561,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E3"
+  },
+  {
+   "t": 32.891,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 3"
+  },
+  {
+   "t": 38.172,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E3"
+  },
+  {
+   "t": 45.802,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E2"
+  },
+  {
+   "t": 46.132,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 2"
+  },
+  {
+   "t": 57.398,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E2"
+  },
+  {
+   "t": 60.71,
+   "sfx": "card_whoosh",
+   "db": -8,
+   "why": "Übergang E1"
+  },
+  {
+   "t": 61.04,
+   "sfx": "card_hit",
+   "db": -5,
+   "why": "Nummer 1"
+  },
+  {
+   "t": 61.07,
+   "sfx": "number_one",
+   "db": -5,
+   "why": "Nummer 1"
+  },
+  {
+   "t": 67.553,
+   "sfx": "stat_pop",
+   "db": -9,
+   "why": "Stat E1"
+  },
+  {
+   "t": 74.48,
+   "sfx": "drip",
+   "db": -10,
+   "why": "Skript E1"
+  },
+  {
+   "t": 77.983,
+   "sfx": "splash",
+   "db": -9,
+   "why": "Skript E1"
+  },
+  {
+   "t": 78.937,
+   "sfx": "outro_chime",
+   "db": -8,
+   "why": "outro"
+  },
+  {
+   "t": 80.819,
+   "sfx": "end_sting",
+   "db": -7,
+   "why": "Schluss"
+  }
+ ],
+ "warnings": []
+}

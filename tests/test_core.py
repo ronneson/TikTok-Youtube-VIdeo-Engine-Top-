@@ -87,3 +87,16 @@ def test_canvas_draws():
     arr = fr.to_array()
     assert arr.shape == (300, 200, 4)
     assert arr[150, 100, 0] > 100  # Kreis ist rot
+
+
+def test_numeric_word_anchor():
+    sc = {"title": "T", "slug": "t", "entries": [{"rank": 1, "title": "One", "lines": ["It cost 100 million dollars in 2003."]}]}
+    tl = T.build(sc)
+    w100 = tl.find('100')
+    assert w100 is not None
+    assert tl.at('100') == w100.t0          # Zahlen-String = gesprochenes Wort
+    assert tl.at('100$') == w100.t1
+    assert abs(tl.at('100+0.5') - (w100.t0 + 0.5)) < 1e-9
+    assert tl.at(7) == 7.0                   # echte Zahl = Sekunden
+    assert tl.at('7') == 7.0                 # kein Wort "7" -> Sekunden
+    assert tl.at('2003.') == tl.find('2003').t0

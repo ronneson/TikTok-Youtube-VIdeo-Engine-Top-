@@ -87,21 +87,26 @@ class Timeline:
         return None
 
     def at(self, anchor, line_id: str = None, default: float = 0.0) -> float:
-        """Zeit eines Ankers. Zahl -> Sekunden; 'wort' -> Wortbeginn; 'wort$' -> Wortende; '+0.2' Versatz erlaubt ('wort$+0.2')."""
+        """Zeit eines Ankers. Echte Zahl (int/float) -> Sekunden. String -> Wort: 'wort' Wortbeginn, 'wort$' Wortende,
+        Versatz erlaubt ('wort$+0.2', '18-0.1'). Ein Zahlen-String ('18', '9,500') meint das gesprochene Wort;
+        nur wenn es kein solches Wort gibt, gilt er als Sekunden."""
         if isinstance(anchor, (int, float)):
             return float(anchor)
         s = str(anchor).strip()
         off = 0.0
-        m = re.match(r"^(.*?)([+-]\d*\.?\d+)$", s)
-        if m and not re.match(r"^[+-]?\d*\.?\d+$", s):
+        # Versatz abtrennen, aber nur, wenn davor noch ein Anker übrig bleibt
+        m = re.match(r"^(.+?)([+-]\d*\.\d+|[+-]\d+)$", s)
+        if m and self.find(m.group(1), line_id) is not None:
             s, off = m.group(1), float(m.group(2))
-        if re.match(r"^[+-]?\d*\.?\d+$", s):
-            return float(s) + off
+        elif m and not re.match(r"^[+-]?\d*\.?\d+$", m.group(1)):
+            s, off = m.group(1), float(m.group(2))
         end = s.endswith('$')
         w = self.find(s, line_id)
-        if w is None:
-            return default + off
-        return (w.t1 if end else w.t0) + off
+        if w is not None:
+            return (w.t1 if end else w.t0) + off
+        if re.match(r"^[+-]?\d*\.?\d+$", s):
+            return float(s) + off
+        return default + off
 
     def to_json(self) -> dict:
         return {'source': self.source, 'duration': self.duration,
