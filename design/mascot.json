@@ -1,0 +1,865 @@
+{
+ "name": "Odd",
+ "species": "Elster (Pica pica), stilisiert; Exponat Nr. 0 des Odd Cabinet",
+ "unit": "Körperhöhe size = 1.0; Standard size 400 px Hochformat (Bodenmittelpunkt (0.28, 0.86) der Bühne fmt.stage), 320 px Querformat, Minimum 140 px (dann ohne Glanzpunkt/Wange), Wasserzeichen 44 px (nur Kopf)",
+ "axes": "x rechts, y nach oben negativ (Boden y=0, Kopfoberkante y=-1.00)",
+ "sticker": {
+  "rim_px": 14,
+  "rim_color": "line",
+  "shadow": {
+   "dy": 8,
+   "sigma": 16,
+   "alpha": 0.2
+  },
+  "note": "Rand um die Gesamtsilhouette (2-Pass-Weißrand), Kostüm eingeschlossen; Kopf-Variante (Wasserzeichen/Profil) Rand 24 px bei 1000 px"
+ },
+ "colors": {
+  "main": "mascot_main #1F2233",
+  "dark": "mascot_dark #12141F",
+  "light": "mascot_light #F7F1E6",
+  "sheen": "mascot_sheen #2F9AA6",
+  "beak": "mascot_beak #3A3F4F",
+  "eye": "line #FFFFFF",
+  "pupil": "mascot_dark #12141F",
+  "cheek_tongue": "danger #F0634A",
+  "brow": "mascot_light #F7F1E6 (alpha 0.9)"
+ },
+ "draw_order_primitives": [
+  {
+   "id": 1,
+   "part": "tail",
+   "type": "rrect",
+   "w": 0.4,
+   "h": 0.1,
+   "r": 0.05,
+   "pivot": [
+    -0.26,
+    -0.44
+   ],
+   "angle_default": -30,
+   "angle_range": [
+    -45,
+    30
+   ],
+   "color": "main",
+   "note": "Stimmungsnadel: oben = Freude, unten = Trauer/Respekt"
+  },
+  {
+   "id": 2,
+   "part": "tail_tip",
+   "type": "ellipse",
+   "rx": 0.07,
+   "ry": 0.05,
+   "local": [
+    -0.36,
+    0.0
+   ],
+   "attached_to": "tail",
+   "color": "sheen"
+  },
+  {
+   "id": 3,
+   "part": "wing_back",
+   "type": "teardrop",
+   "w": 0.4,
+   "h": 0.22,
+   "pivot": [
+    -0.04,
+    -0.6
+   ],
+   "angle_default": -10,
+   "color": "dark",
+   "visible_in": [
+    "cheer",
+    "fly",
+    "run",
+    "shock"
+   ],
+   "note": "ferner Flügel, sonst alpha 0"
+  },
+  {
+   "id": 4,
+   "part": "leg_l",
+   "type": "line",
+   "from": [
+    -0.09,
+    -0.19
+   ],
+   "to": [
+    -0.1,
+    0.0
+   ],
+   "width": 0.022,
+   "color": "beak",
+   "note": "Länge x leg_len (1.0; sneak 1.2)"
+  },
+  {
+   "id": 5,
+   "part": "leg_r",
+   "type": "line",
+   "from": [
+    0.09,
+    -0.19
+   ],
+   "to": [
+    0.1,
+    0.0
+   ],
+   "width": 0.022,
+   "color": "beak"
+  },
+  {
+   "id": 6,
+   "part": "foot_l",
+   "type": "polyline",
+   "pts": [
+    [
+     -0.16,
+     0.0
+    ],
+    [
+     -0.1,
+     -0.03
+    ],
+    [
+     -0.04,
+     0.0
+    ]
+   ],
+   "width": 0.022,
+   "color": "beak",
+   "note": "V = drei Zehen angedeutet"
+  },
+  {
+   "id": 7,
+   "part": "foot_r",
+   "type": "polyline",
+   "pts": [
+    [
+     0.04,
+     0.0
+    ],
+    [
+     0.1,
+     -0.03
+    ],
+    [
+     0.16,
+     0.0
+    ]
+   ],
+   "width": 0.022,
+   "color": "beak"
+  },
+  {
+   "id": 8,
+   "part": "body",
+   "type": "ellipse",
+   "center": [
+    0.0,
+    -0.42
+   ],
+   "rx": 0.31,
+   "ry": 0.25,
+   "rot": -10,
+   "color": "main",
+   "note": "Squash/Stretch-Träger: sy 0.80..1.20, sx = 1/sqrt(sy)"
+  },
+  {
+   "id": 9,
+   "part": "belly",
+   "type": "ellipse",
+   "center": [
+    0.06,
+    -0.36
+   ],
+   "rx": 0.2,
+   "ry": 0.17,
+   "color": "light",
+   "clip": "body"
+  },
+  {
+   "id": 10,
+   "part": "collar",
+   "type": "crescent",
+   "circle_a": {
+    "center": [
+     0.1,
+     -0.58
+    ],
+    "r": 0.17
+   },
+   "minus_circle_b": {
+    "center": [
+     0.16,
+     -0.63
+    ],
+    "r": 0.17
+   },
+   "color": "light",
+   "clip": "body",
+   "note": "Smoking-Kragen"
+  },
+  {
+   "id": 11,
+   "part": "wing_front",
+   "type": "teardrop",
+   "w": 0.42,
+   "h": 0.24,
+   "pivot": [
+    -0.06,
+    -0.58
+   ],
+   "angle_default": -10,
+   "angle_range": [
+    -120,
+    25
+   ],
+   "color": "main",
+   "note": "Flügelspitze = Anker hand (0.42 vom Pivot entlang des Winkels)"
+  },
+  {
+   "id": 12,
+   "part": "wing_band",
+   "type": "rrect",
+   "w": 0.22,
+   "h": 0.07,
+   "r": 0.035,
+   "local": [
+    0.14,
+    0.02
+   ],
+   "attached_to": "wing_front",
+   "color": "light",
+   "clip": "wing_front"
+  },
+  {
+   "id": 13,
+   "part": "wing_sheen",
+   "type": "ellipse",
+   "rx": 0.07,
+   "ry": 0.04,
+   "local": [
+    0.26,
+    -0.03
+   ],
+   "attached_to": "wing_front",
+   "color": "sheen",
+   "clip": "wing_front",
+   "note": "einzige feste Buntfarbe; Glanzpunkt-Alpha 0.6..1.0 bei 1.3 Hz"
+  },
+  {
+   "id": 14,
+   "part": "head",
+   "type": "circle",
+   "center": [
+    0.14,
+    -0.76
+   ],
+   "r": 0.24,
+   "color": "main",
+   "note": "head_tilt um den Halspunkt (0.08, -0.56); head_turn verschiebt Gesichtsteile um -0.12..0 in x"
+  },
+  {
+   "id": 15,
+   "part": "cheek",
+   "type": "ellipse",
+   "center": [
+    0.26,
+    -0.7
+   ],
+   "rx": 0.045,
+   "ry": 0.025,
+   "color": "cheek_tongue",
+   "alpha_range": [
+    0.0,
+    0.4
+   ]
+  },
+  {
+   "id": 16,
+   "part": "beak_bottom",
+   "type": "rounded_tri",
+   "pivot": [
+    0.35,
+    -0.77
+   ],
+   "local_pts": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.17,
+     0.02
+    ],
+    [
+     0.0,
+     0.05
+    ]
+   ],
+   "corner_r": 0.015,
+   "rotate": "+beak_open (0..35 Grad)",
+   "color": "dark"
+  },
+  {
+   "id": 17,
+   "part": "tongue",
+   "type": "half_disc",
+   "center_local": [
+    0.06,
+    0.01
+   ],
+   "r": 0.035,
+   "attached_to": "beak_bottom",
+   "color": "cheek_tongue",
+   "visible_if": "beak_open > 20"
+  },
+  {
+   "id": 18,
+   "part": "beak_top",
+   "type": "rounded_tri",
+   "pivot": [
+    0.35,
+    -0.77
+   ],
+   "local_pts": [
+    [
+     0.0,
+     -0.045
+    ],
+    [
+     0.2,
+     0.0
+    ],
+    [
+     0.0,
+     0.02
+    ]
+   ],
+   "corner_r": 0.02,
+   "rotate": "beak_top_rot (-6..0, smile)",
+   "color": "beak"
+  },
+  {
+   "id": 19,
+   "part": "eye_white",
+   "type": "circle",
+   "center": [
+    0.24,
+    -0.8
+   ],
+   "r": 0.07,
+   "color": "eye",
+   "note": "nahes Auge; fernes Auge bei (0.07, -0.80) mit alpha = clamp(head_turn) und r 0.06; eye_scale 1.0 (surprised 1.15)"
+  },
+  {
+   "id": 20,
+   "part": "pupil",
+   "type": "circle",
+   "center": "eye + look * 0.042",
+   "r": 0.033,
+   "scale_range": [
+    0.7,
+    1.4
+   ],
+   "color": "pupil",
+   "highlight": {
+    "type": "circle",
+    "offset": [
+     -0.012,
+     -0.012
+    ],
+    "r": 0.011,
+    "color": "eye"
+   }
+  },
+  {
+   "id": 21,
+   "part": "lid_top",
+   "type": "half_disc_clip",
+   "over": "eye_white",
+   "coverage": "lid_top 0..1 von oben",
+   "color": "main",
+   "note": "Blinzeln: zu 120 ms, auf 90 ms"
+  },
+  {
+   "id": 22,
+   "part": "lid_bottom",
+   "type": "half_disc_clip",
+   "over": "eye_white",
+   "coverage": "lid_bottom 0..0.5 von unten",
+   "color": "main",
+   "note": "fröhliches Kneifen"
+  },
+  {
+   "id": 23,
+   "part": "brow",
+   "type": "rrect",
+   "w": 0.12,
+   "h": 0.03,
+   "r": 0.015,
+   "center": [
+    0.24,
+    -0.91
+   ],
+   "angle_range": [
+    -25,
+    25
+   ],
+   "color": "brow",
+   "note": "Elfenbein-Feder über dem Auge; je Seite getrennt (brow_l nah, brow_r fern)"
+  },
+  {
+   "id": 24,
+   "part": "crest",
+   "type": "rounded_tri_x3",
+   "center": [
+    0.14,
+    -1.0
+   ],
+   "size": 0.06,
+   "color": "main",
+   "visible_in": [
+    "shock"
+   ],
+   "note": "drei Scheitelfedern ploppen ab (Pop-In 200 ms, Pop-Out 300 ms)"
+  }
+ ],
+ "proportions": {
+  "head_to_body_height": "1 : 1.3",
+  "eye_diameter_of_head": 0.29,
+  "beak_length_of_head_radius": 0.83,
+  "tail_length_of_body_length": 0.65,
+  "leg_height_of_total": 0.19,
+  "view": "3/4 nach rechts; flip=True spiegelt",
+  "ranges": {
+   "body_tilt_deg": [
+    -25,
+    25
+   ],
+   "head_tilt_deg": [
+    -15,
+    15
+   ],
+   "head_turn": [
+    -1,
+    1
+   ],
+   "look": [
+    [
+     -1,
+     1
+    ],
+    [
+     -1,
+     1
+    ]
+   ]
+  }
+ },
+ "anchors": {
+  "hat": [
+   0.14,
+   -1.0
+  ],
+  "face": [
+   0.24,
+   -0.8
+  ],
+  "neck": [
+   0.08,
+   -0.56
+  ],
+  "hand": "Spitze von wing_front",
+  "back": [
+   -0.2,
+   -0.5
+  ],
+  "beak_tip": [
+   0.55,
+   -0.77
+  ]
+ },
+ "expression_params": {
+  "lid_top": "0..1",
+  "lid_bottom": "0..0.5",
+  "brow_l": "-25..25 Grad",
+  "brow_r": "-25..25 Grad",
+  "beak_open": "0..35 Grad",
+  "beak_top_rot": "-6..0 Grad",
+  "pupil": "0.7..1.4",
+  "eye_scale": "1.0..1.15",
+  "look": "(dx, dy) -1..1 -> Pupille bis 0.042 (60 % des Augenradius)",
+  "cheek": "0..0.4",
+  "tail_mood": "-45..30 Grad (vierte Nadel)"
+ },
+ "expressions": {
+  "neutral": {
+   "lid_top": 0.0,
+   "lid_bottom": 0.0,
+   "brow_l": 0,
+   "brow_r": 0,
+   "beak_open": 0,
+   "beak_top_rot": 0,
+   "pupil": 1.0,
+   "cheek": 0.0,
+   "tail": -30
+  },
+  "smile": {
+   "lid_top": 0.0,
+   "lid_bottom": 0.15,
+   "brow_l": 8,
+   "brow_r": 8,
+   "beak_open": 4,
+   "beak_top_rot": -6,
+   "pupil": 1.1,
+   "cheek": 0.3,
+   "tail": -10
+  },
+  "smirk": {
+   "lid_top": 0.35,
+   "lid_bottom": 0.0,
+   "brow_l": 18,
+   "brow_r": -4,
+   "beak_open": 6,
+   "beak_top_rot": -4,
+   "pupil": 1.0,
+   "cheek": 0.2,
+   "tail": -15
+  },
+  "surprised": {
+   "lid_top": 0.0,
+   "lid_bottom": 0.0,
+   "brow_l": 25,
+   "brow_r": 25,
+   "beak_open": 30,
+   "beak_top_rot": 0,
+   "pupil": 0.8,
+   "eye_scale": 1.15,
+   "cheek": 0.0,
+   "tail": 20
+  },
+  "worried": {
+   "lid_top": 0.2,
+   "lid_bottom": 0.0,
+   "brow_l": 20,
+   "brow_r": -12,
+   "beak_open": 8,
+   "beak_top_rot": 0,
+   "pupil": 1.0,
+   "look": [
+    0.2,
+    -0.5
+   ],
+   "cheek": 0.0,
+   "tail": -40
+  },
+  "angry": {
+   "lid_top": 0.4,
+   "lid_bottom": 0.0,
+   "brow_l": -25,
+   "brow_r": -25,
+   "beak_open": 0,
+   "beak_top_rot": 0,
+   "pupil": 0.9,
+   "cheek": 0.0,
+   "tail": 10
+  },
+  "sleepy": {
+   "lid_top": 0.65,
+   "lid_bottom": 0.1,
+   "brow_l": 0,
+   "brow_r": 0,
+   "beak_open": 2,
+   "beak_top_rot": 0,
+   "pupil": 1.1,
+   "cheek": 0.0,
+   "tail": -40
+  },
+  "sly": {
+   "lid_top": 0.5,
+   "lid_bottom": 0.0,
+   "brow_l": -10,
+   "brow_r": -10,
+   "beak_open": 6,
+   "beak_top_rot": -4,
+   "pupil": 1.0,
+   "look": [
+    0.8,
+    0.0
+   ],
+   "cheek": 0.2,
+   "tail": 0
+  }
+ },
+ "mouth_forms": {
+  "closed": "beak_open 0",
+  "smile": "beak_top_rot -6, beak_open 4, cheek 0.3",
+  "talk": "beak_open folgt Sprachamplitude 0..18 (nur wenn Odd 'spricht')",
+  "gasp": "beak_open 35, tongue",
+  "grin": "beak_open 12, lid_bottom 0.4",
+  "smirk": "brow_l +18, lid_top 0.35, beak_open 6"
+ },
+ "blink": {
+  "close_ms": 120,
+  "open_ms": 90,
+  "interval_s": "2.5 + 2.5 * hash(seed, i)",
+  "double_blink_in": [
+   "think",
+   "worried"
+  ],
+  "sound": "blink (-18 dB, nur in Sprechpausen)"
+ },
+ "pose_params": [
+  "body_tilt",
+  "body_sy (sx=1/sqrt(sy))",
+  "body_dy",
+  "body_rot_jitter",
+  "head_tilt",
+  "head_turn",
+  "head_dy",
+  "wing_front",
+  "wing_back",
+  "tail",
+  "leg_len",
+  "step_phase",
+  "shake",
+  "crest",
+  "visible",
+  "expr-Overrides"
+ ],
+ "poses": {
+  "idle": {
+   "use": "Grundzustand",
+   "head_tilt": "12 + wobble(t, 0.3, 1.5, seed)",
+   "pupil": 1.2,
+   "tail": "-30 + 6*osc(t, 0.5)",
+   "breathe": "scale 1 + 0.015*sin(2*pi*0.4*t)",
+   "look": "Fokus-Sticker (0.6, 0.1); jede dritte 1.8-s-Phase zur Kamera (0, 0)",
+   "wing_front": -10,
+   "expr": "neutral"
+  },
+  "point": {
+   "use": "Präsentieren",
+   "wing_front": "-70 + 6*(1 - spring(t, t0, 400, 12))",
+   "brow_l": 15,
+   "expr": "smile",
+   "body_tilt": 6,
+   "leg_len_r": 0.95,
+   "look": "Ziel",
+   "tail": -10
+  },
+  "think": {
+   "use": "Skeptisch",
+   "brow_l": -12,
+   "brow_r": 18,
+   "lid_top": 0.45,
+   "beak_open": 0,
+   "head_tilt": -8,
+   "wing_front": -95,
+   "tail": "-30 + 8*sign(osc(t, 1.0))",
+   "blink": "doppelt",
+   "optional_prop": "question (0.12 über hat)"
+  },
+  "shock": {
+   "use": "Kinnlade",
+   "beak_open": 35,
+   "pupil": 0.7,
+   "eye_scale": 1.15,
+   "brow_l": 25,
+   "brow_r": 25,
+   "body_sy": "Keyframes [(0, 1.0), (0.06, 0.85), (0.18, 1.18), (0.34, 1.0)] out_back",
+   "crest": true,
+   "tail": 30,
+   "shake": "amp 8 px, 200 ms, 1x",
+   "sound": "gasp"
+  },
+  "laugh": {
+   "use": "Kichern (makaber-humorvoll)",
+   "lid_bottom": 0.4,
+   "beak_open": "10 + 4*abs(osc(t, 8))",
+   "wing_front": -80,
+   "body_rot_jitter": "2*osc(t, 8)",
+   "cheek": 0.4,
+   "tail": 20,
+   "body_dy": "-0.02*abs(sin(2*pi*4*t))",
+   "sound": "giggle"
+  },
+  "sneak": {
+   "use": "Dieb",
+   "body_tilt": 20,
+   "lid_top": 0.5,
+   "leg_len": 1.2,
+   "step": "1.6 Hz, Hub 0.03, Beine wechselnd",
+   "look": [
+    0.9,
+    0.0
+   ],
+   "beak_open": 0,
+   "carry": "Prop am Anker beak_tip (z. B. gem)",
+   "fx": "sneak_trail (gestrichelt, alpha 0.35)",
+   "sound": "hop je Schritt (-14 dB)"
+  },
+  "peek": {
+   "use": "Hook-Auftritt",
+   "visible": [
+    "head",
+    "beak",
+    "eyes",
+    "brow",
+    "wing_front"
+   ],
+   "enter": "von unten oder links, Pop-In s 2.2 (anim.pop overshoot 1.22, 320 ms), geclippt an der Bühnenkante",
+   "pupil": 1.4,
+   "brow_l": 20,
+   "brow_r": 20,
+   "look": "Kamera"
+  },
+  "bow": {
+   "use": "Respekt (Todesfall)",
+   "wing_front": 25,
+   "head_tilt": -15,
+   "lid_top": 0.6,
+   "tail": -45,
+   "hat": "im Flügel (hand), vom Kopf genommen",
+   "breathe": "0.25 Hz",
+   "no_loops": true,
+   "min_hold_s": 1.5
+  },
+  "cheer": {
+   "use": "#1, Pointe",
+   "wing_front": -120,
+   "wing_back": -120,
+   "body_dy": "-0.05*abs(sin(2*pi*2*t))",
+   "beak_open": 12,
+   "expr": "smile",
+   "tail": 30,
+   "confetti_allowed": true
+  },
+  "facepalm": {
+   "use": "Dummheit der Täter",
+   "wing_front": -100,
+   "wing_over_eye": true,
+   "head_tilt": -10,
+   "lid_top": 0.6,
+   "tail": -35,
+   "sound": "hmm"
+  },
+  "wink": {
+   "use": "Pointe, Outro",
+   "lid_top_near": "1.0 für 300 ms",
+   "expr": "smirk",
+   "head_tilt": 8,
+   "wing_front": -60
+  },
+  "fly": {
+   "use": "Elster-Lieferung, run",
+   "wing_front": "-60 + 50*sin(2*pi*6*t)",
+   "wing_back": "-60 - 50*sin(2*pi*6*t)",
+   "body_tilt": 15,
+   "legs": "angelegt (leg_len 0.6)",
+   "smear": "2 Frames 1.4x entlang des Vektors",
+   "sound": "flap"
+  },
+  "hide": {
+   "use": "hinter Prop/Karte",
+   "visible": [
+    "eyes",
+    "brow",
+    "tail_tip"
+   ],
+   "clip": "Prop-Silhouette",
+   "pupil": 1.3
+  }
+ },
+ "costumes": {
+  "rules": "<= 5 Primitive, an Ankern hat/neck/hand/face; nie beide Augen bedecken; Schnabel immer sichtbar; <= 2 Themenakzente + mascot_sheen; Kostüm kommt mit dem ersten Pop-In, wechselt nie im Eintrag; in bow wird der Hut abgenommen",
+  "theme_map": {
+   "curious": "default",
+   "heist": "thief",
+   "cave": "miner",
+   "animal": "explorer",
+   "space": "astronaut",
+   "history": "historian",
+   "ocean": "diver",
+   "medical": "doctor",
+   "crime": "detective",
+   "food": "chef"
+  },
+  "default": {
+   "parts": [
+    "Smoking-Kragen (collar)"
+   ],
+   "accent": "wing_sheen in mascot_sheen"
+  },
+  "thief": {
+   "parts": [
+    "Domino-Maske: zwei verschmolzene Ellipsen 0.14x0.08 an face, ink_dark, mit Augenschlitzen (Augen werden darüber gezeichnet)",
+    "Beutel-Sticker 0.16 an beak_tip mit gem (accent)"
+   ],
+   "gag": "die Elster bräuchte keine Maske"
+  },
+  "miner": {
+   "parts": [
+    "Helm: Halbscheibe r 0.20 + Krempe rrect 0.44x0.04 an hat, accent",
+    "Lampe: Kreis r 0.04 vorn + Lichtkegel (Dreieck alpha 0.25, glow, add), Kegel folgt look",
+    "Seilrolle: Ring 0.10 an back, wood"
+   ]
+  },
+  "explorer": {
+   "parts": [
+    "Tropenhelm: Ellipse 0.30x0.14 + Krempe 0.46x0.04 an hat, paper",
+    "Fernglas: zwei Kreise r 0.045 + Steg an neck, mascot_beak"
+   ]
+  },
+  "astronaut": {
+   "parts": [
+    "Glaskuppel: Kreis r 0.34 an head, line alpha 0.22 + Glanzbogen alpha 0.35",
+    "Antenne: Linie 0.10 + Kugel r 0.02 blinkt 1 Hz (accent2)"
+   ]
+  },
+  "historian": {
+   "parts": [
+    "Zylinder: rrect 0.26x0.22 + Krempe 0.40x0.04 an hat, ink_dark mit Band accent",
+    "Monokel: Ring r 0.08 an face (fern) + Kettchen (Bezier zu neck), accent"
+   ]
+  },
+  "diver": {
+   "parts": [
+    "Taucherbrille: rrect 0.30x0.14 r 0.05 an face, steel, Glas accent2 alpha 0.3",
+    "Schnorchel: Rundlinie 0.03 + Rohrende an hat-Seite, accent"
+   ]
+  },
+  "doctor": {
+   "parts": [
+    "Stirnspiegel: Ring r 0.05 + Band an hat, steel",
+    "Stethoskop: Rundlinie um neck + Scheibe r 0.04, steel",
+    "Kragen bleibt light"
+   ]
+  },
+  "detective": {
+   "parts": [
+    "Deerstalker: zwei Halbscheiben r 0.20 an hat, wood, Band accent",
+    "Lupe: Ring r 0.10 + Griff an hand; Linse = echter Clip mit Scale 1.3 (zeichnet die Szene darunter vergrößert)"
+   ]
+  },
+  "chef": {
+   "parts": [
+    "Kochmütze: rrect 0.24x0.18 + drei Kreise r 0.07 an hat, light",
+    "Löffel: Linie 0.18 + Ellipse an hand, steel"
+   ]
+  }
+ },
+ "secondary_signal": "Vier-Augen-Prinzip: Schwanzwinkel und Brauen (Elfenbein) spiegeln jede Mimik, damit der Ausdruck bei 140 px lesbar bleibt; Flügelschimmer funkelt bei Staunen (alpha 1.0), erlischt in bow (alpha 0.4)",
+ "catchphrase": {
+  "text": "Odd.",
+  "form": "Sprechblasen-Sticker, Unbounded 900 64 px, Tinte auf Elfenbein",
+  "rule": "höchstens 1x je Video, nur auf einer Pointe, nie im Respekt-Modus"
+ },
+ "tests": {
+  "sheet": "mascot.sheet: Posen x Kostüme x Ausdrücke in 120, 240 und 420 px (library/sheets/mascot.png)",
+  "silhouette": "Jede Pose muss als Einfarb-Silhouette bei 120 px erkennbar sein: Kopf, Schnabel, Schwanz, Flügel",
+  "contrast": "Figur nur mit Sticker-Rand 14 px rendern; ohne Rand ist mascot_main auf bg0 1.1:1 und unlesbar"
+ }
+}

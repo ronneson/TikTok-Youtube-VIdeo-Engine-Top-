@@ -75,41 +75,104 @@ class Composition:
         }
 
     def cues(self) -> list:
-        """Tonereignisse [{'t': s, 'sfx': id, 'db': x, 'why': ...}]: automatische plus die aus dem Skript."""
+        """Tonereignisse [{'t','sfx','db','why'}] (STIL.md 5.2 und 10.6): automatische Choreografie plus Skript-Cues."""
         out = []
-        for sc in self.scenes:
+        tl = self.tl
+        def add(t, sfx, db, why):
+            out.append({'t': round(float(t), 3), 'sfx': sfx, 'db': db, 'why': why})
+        entries = [sc for sc in self.scenes if sc.kind == 'entry']
+        for i, sc in enumerate(self.scenes):
+            t0, td = sc.t0, sc.trans_dur
             if sc.kind == 'hook':
-                out.append({'t': round(max(0.0, sc.t0 + 0.05), 3), 'sfx': 'hook_hit', 'db': -6, 'why': 'hook'})
+                add(max(0.0, t0 + 0.05), 'hook_hit', -6, 'hook')
             elif sc.kind == 'entry':
-                out.append({'t': round(sc.t1 - sc.trans_dur * 0.5 if False else sc.t0, 3), 'sfx': 'card_whoosh', 'db': -8, 'why': f'Übergang {sc.id}'})
-                out.append({'t': round(sc.t0 + sc.trans_dur * 0.55, 3), 'sfx': 'card_hit', 'db': -5, 'why': f'Nummer {sc.rank}'})
+                variant = sc.visual.get('card_variant') or ('B' if (sc.rank or 1) % 2 == 0 else 'A')
+                respect_mode = bool((sc.entry or {}).get('respect'))
                 if sc.rank == 1:
-                    out.append({'t': round(sc.t0 + sc.trans_dur * 0.6, 3), 'sfx': 'number_one', 'db': -5, 'why': 'Nummer 1'})
+                    add(t0 - 1.5, 'riser', -12, 'Riser vor #1')
+                    add(t0, 'flash', -14, 'Konfetti-Cut #1')
+                    add(t0, 'confetti', -10, 'Konfetti #1')
+                else:
+                    add(t0, 'card_whoosh', -8, f'Übergang {sc.id}')
+                    add(t0, 'peel', -12, f'Peel {sc.id}')
+                if variant == 'A' or sc.rank == 1:
+                    add(t0, 'flap', -12, 'Elster-Lieferung')
+                    add(t0 + 0.40, 'hop', -12, 'Odd landet')
+                    if sc.rank != 1 and not respect_mode:
+                        add(t0 + 0.33, 'confetti', -12, 'Landung')
+                else:
+                    for k in range(5):
+                        add(t0 + 0.05 + k * 0.055, 'tick', -30, 'Zählwerk')
+                add(t0 + td * 0.55, f'card_hit_{sc.rank}', -5, f'Nummer {sc.rank}')
+                if sc.rank == 1:
+                    add(t0 + 0.36, 'number_one', -5, 'Nummer 1')
+                add(t0 + 0.58, 'pop_in', -6, 'Badge im Album-Fach')
+                if not respect_mode:
+                    add(t0 + 0.58, 'shiny', -12, 'Fach füllt sich')
+                # Titelwörter in der Haltezeit
+                title = (sc.entry or {}).get('title', '')
+                for k, _w in enumerate(title.split()[:6]):
+                    add(t0 + 0.55 + k * 0.045, 'pop_in', -10, 'Titelwort')
+                # Meta-Pille tippt sich ein
+                meta = f"{(sc.entry or {}).get('place', '')} {(sc.entry or {}).get('year', '')}".strip()
+                for k in range(min(12, len(meta))):
+                    add(t0 + 1.70 + k * 0.033, 'typewriter', -16, 'Meta-Pille')
+                # Hero / Begleiter / Schlagworte / Stat an ihren Ankern
+                vis = sc.visual or {}
+                first_line = sc.lines[0].id if sc.lines else None
+                def anchor_time(at, fallback):
+                    if at in (None, ''):
+                        return fallback
+                    if isinstance(at, (int, float)):
+                        return t0 + float(at)
+                    return tl.at(at, default=fallback)
+                props = vis.get('props') or []
+                for j, pr in enumerate(props):
+                    at = pr.get('at') if isinstance(pr, dict) else None
+                    tt = anchor_time(at, min(t0 + 1.8, sc.t1 - 0.5) + j * 0.25)
+                    add(tt, 'pop_in', -8, f'Sticker {pr.get("name") if isinstance(pr, dict) else pr}')
+                for kw in vis.get('keywords') or []:
+                    tt = anchor_time(kw.get('at'), t0 + 2.0)
+                    add(tt, 'keyword_slam', -6, f'Schlagwort {kw.get("text", "")[:16]}')
+                for b in vis.get('beats') or []:
+                    tt = anchor_time(b.get('at'), t0 + sc.dur * 0.5)
+                    if b.get('stamp'):
+                        add(tt, 'stamp', -5, f'Stempel {b.get("stamp")}')
+                    elif b.get('respect'):
+                        add(tt, 'respect_hush', -12, 'Respekt')
+                    else:
+                        add(tt, 'pop_in', -9, 'Beat')
+                if vis.get('stamp'):
+                    tt = anchor_time(vis['stamp'].get('at') if isinstance(vis['stamp'], dict) else None, sc.t1 - 1.2)
+                    add(tt, 'stamp', -5, 'Stempel')
                 st = (sc.entry or {}).get('stat')
                 if st:
-                    # 'at' ist ein Anker (Wort oder Sekunden ab Szenenbeginn); ohne 'at' wird der Wert nur als
-                    # gesprochenes Wort gesucht, nie als Zeit (sonst läge "42" bei 42 s), sonst 2 s nach Szenenbeginn.
-                    default = sc.t0 + 2.0
+                    default = t0 + 2.0
                     at = st.get('at')
                     if at not in (None, ''):
-                        tt = sc.t0 + float(at) if isinstance(at, (int, float)) else self.tl.at(at, default=default)
+                        tt = t0 + float(at) if isinstance(at, (int, float)) else tl.at(at, default=default)
                     else:
                         tt = self._stat_word_time(sc, str(st.get('value', '')).strip(), default)
-                    out.append({'t': round(tt, 3), 'sfx': 'stat_pop', 'db': -9, 'why': f'Stat {sc.id}'})
+                    add(tt, 'stat_pop', -9, f'Stat {sc.id}')
+                if vis.get('say') or (sc.entry or {}).get('say'):
+                    tt = anchor_time((vis.get('say') or {}).get('at') if isinstance(vis.get('say'), dict) else None, sc.t1 - 1.5)
+                    add(tt, 'odd_say', -8, 'Sprechblase')
             elif sc.kind == 'outro':
-                out.append({'t': round(sc.t0 + 0.3, 3), 'sfx': 'outro_chime', 'db': -8, 'why': 'outro'})
+                add(sc.t0 + 0.3, 'outro_chime', -8, 'outro')
+                add(sc.t0 + 0.6, 'confetti', -12, 'Outro-Konfetti')
+        # Skript-Cues
         for sc in self.scenes:
             src = sc.entry if sc.entry else self.script.get(sc.kind, {})
             for cue in (src or {}).get('cues', []):
                 anchor, sfx = cue[0], cue[1]
                 db = cue[2] if len(cue) > 2 else -8
-                lid = sc.lines[0].id if sc.lines else None
-                tt = self.tl.at(anchor, default=None) if not isinstance(anchor, (int, float)) else sc.t0 + float(anchor)
+                tt = sc.t0 + float(anchor) if isinstance(anchor, (int, float)) else tl.at(anchor, default=None)
                 if tt is None:
                     continue
-                out.append({'t': round(tt, 3), 'sfx': sfx, 'db': db, 'why': f'Skript {sc.id}'})
-        end = self.tl.voice_end()
-        out.append({'t': round(end + 0.25, 3), 'sfx': 'end_sting', 'db': -7, 'why': 'Schluss'})
+                add(tt, sfx, db, f'Skript {sc.id}')
+        end = tl.voice_end()
+        add(end + 0.25, 'end_sting', -7, 'Schluss')
+        out = [c for c in out if c['t'] >= -0.001 and c['t'] <= self.duration]
         return sorted(out, key=lambda c: c['t'])
 
     def _stat_word_time(self, sc, value: str, default: float) -> float:
@@ -143,6 +206,20 @@ class Composition:
         n = S.word_count(self.script)
         if self.fmt.portrait and n > 215:
             w.append(f"{n} Wörter: zu viele für 60–90 s")
+        # STIL.md 10.10: Längen von Titel, Ort, Serienetikett; Stempel und Sprechblase je Video
+        for e in self.script['entries']:
+            if len(str(e.get('title', ''))) > 24:
+                w.append(f"Eintrag {e.get('rank')}: Titel länger als 24 Zeichen ({len(e['title'])}) – passt nicht in die Kopfzeile")
+            if len(str(e.get('place', '') or '')) > 12:
+                w.append(f"Eintrag {e.get('rank')}: Ort länger als 12 Zeichen – nur die Stadt nennen")
+        if len(str(self.script.get('series', '') or '')) > 22:
+            w.append("Serienetikett länger als 22 Zeichen")
+        stamps = sum(1 for e in self.script['entries'] if (e.get('visual') or {}).get('stamp') or any(b.get('stamp') for b in (e.get('visual') or {}).get('beats', [])))
+        if stamps > len(self.script['entries']):
+            w.append("mehr als ein Stempel je Eintrag")
+        says = sum(1 for e in self.script['entries'] if (e.get('visual') or {}).get('say') or e.get('say'))
+        if says > 1:
+            w.append("Sprechblase Odd. höchstens einmal je Video")
         return w
 
 

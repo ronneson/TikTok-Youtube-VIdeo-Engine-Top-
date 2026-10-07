@@ -38,11 +38,19 @@ DEFAULTS = {
         "watermark": True,
         "progress": True,
         "label": True,
+        "caption_style": "odd",            # odd | word | karaoke | line
+        "caption_size": 60,
+        "caption_max_words": 4,
+        "caption_max_chars": 22,
+        "caption_plate_alpha": 0.92,
+        "caption_weight": 700,
+        "push_in": 0.03,                   # langsamer Push-In der Szene je Eintrag
     },
     "brand": {
-        "name": "",
-        "handle": "",
-        "mascot": "",
+        "name": "ODD CABINET",
+        "handle": "@oddcabinet",
+        "mascot": "Odd",
+        "exhibit_no": 1,                   # Archivnummer, zählt je Video hoch (Serienetikett)
     },
     "render": {
         "workers": 4,

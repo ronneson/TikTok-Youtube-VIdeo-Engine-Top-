@@ -1,0 +1,380 @@
+{
+ "version": "1.0 (Jury-Finale 2026-10-07)",
+ "base": {
+  "ink_dark": {
+   "hex": "#171A28",
+   "name": "Tinte",
+   "use": "Text auf hellen Flächen, Untertitel-Plakette (caption_bg), card_ink"
+  },
+  "ivory": {
+   "hex": "#F7F1E6",
+   "name": "Elfenbein",
+   "use": "Hauptschrift (ink) auf dunklen Gründen, Bauch der Elster (mascot_light), Stat-Sticker"
+  },
+  "sticker_white": {
+   "hex": "#FFFFFF",
+   "name": "Sticker-Weiß",
+   "use": "Sticker-Rand (line), Augenweiß, Glanzpunkte; nie als Fläche"
+  },
+  "wonder_gold": {
+   "hex": "#F2B544",
+   "name": "Wunder-Gold",
+   "use": "Nummernkarte (card), Standard-Akzent, aktives Untertitelwort (caption_hi), #1-Momente"
+  },
+  "coral": {
+   "hex": "#F0634A",
+   "name": "Koralle",
+   "use": "Warn-/Gag-Akzent (danger), Stempel, Zunge, Wange"
+  },
+  "magpie_blue": {
+   "hex": "#2F9AA6",
+   "name": "Elsterblau",
+   "use": "Flügelschimmer und Schwanzspitze (mascot_sheen), Verweise"
+  },
+  "plum": {
+   "hex": "#5B3F8F",
+   "name": "Pflaume",
+   "use": "Grundton der Wunderkammer (bg2-Verwandter im Standardthema), Mystery-Schatten"
+  }
+ },
+ "constants": {
+  "ink": "#F7F1E6",
+  "ink_soft": "#C9C2D6",
+  "line": "#FFFFFF",
+  "card": "#F2B544",
+  "card_hi": "#F7C96B",
+  "card_ink": "#171A28",
+  "caption_bg": "#171A28",
+  "caption_ink": "#F7F1E6",
+  "caption_hi": "#F2B544",
+  "mascot_main": "#1F2233",
+  "mascot_dark": "#12141F",
+  "mascot_light": "#F7F1E6",
+  "mascot_sheen": "#2F9AA6",
+  "mascot_beak": "#3A3F4F",
+  "wood": "#8E6F52",
+  "steel": "#9AA3B2",
+  "skin": "#E8C9A8",
+  "paper": "#EAD9B8",
+  "chalk": "#E9E4DA",
+  "foam": "#DDF3F5",
+  "water": "#5FD3F2",
+  "candle": "#FFD8A0",
+  "stamp": "#F0634A",
+  "shadow": "#000000"
+ },
+ "themes": {
+  "curious": {
+   "label": "Kabinett (Standard)",
+   "bg0": "#1E1838",
+   "bg1": "#2E2250",
+   "bg2": "#41336C",
+   "accent": "#F2B544",
+   "accent2": "#5FD9B8",
+   "glow": "#FFD98A",
+   "danger": "#F0634A",
+   "ok": "#5FD9B8",
+   "bed": "cabinet_swing",
+   "costume": "default",
+   "respect": {
+    "bg0": "#211D33",
+    "bg1": "#312949",
+    "bg2": "#453C63",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 15.0,
+    "ink_on_bg2": 9.8,
+    "accent_on_bg0": 9.2,
+    "card_ink_on_accent": 9.4
+   }
+  },
+  "heist": {
+   "label": "Raub",
+   "bg0": "#0F1A2C",
+   "bg1": "#1A2740",
+   "bg2": "#27385A",
+   "accent": "#F2B544",
+   "accent2": "#E8485C",
+   "glow": "#FFE08A",
+   "danger": "#E8485C",
+   "ok": "#58E0C2",
+   "bed": "heist_tiptoe",
+   "costume": "thief",
+   "respect": {
+    "bg0": "#131B28",
+    "bg1": "#20293A",
+    "bg2": "#2F3B52",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 15.5,
+    "ink_on_bg2": 10.4,
+    "accent_on_bg0": 9.5,
+    "card_ink_on_accent": 9.4
+   }
+  },
+  "cave": {
+   "label": "Höhle",
+   "bg0": "#121420",
+   "bg1": "#232838",
+   "bg2": "#3B4254",
+   "accent": "#F2B544",
+   "accent2": "#6FAE8F",
+   "glow": "#FFD27A",
+   "danger": "#F0634A",
+   "ok": "#6FAE8F",
+   "bed": "cave_drip",
+   "costume": "miner",
+   "extra": {
+    "water": "#5FD3F2"
+   },
+   "respect": {
+    "bg0": "#14161E",
+    "bg1": "#262A35",
+    "bg2": "#3F4450",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 16.3,
+    "ink_on_bg2": 8.9,
+    "accent_on_bg0": 10.0,
+    "card_ink_on_accent": 9.4
+   }
+  },
+  "animal": {
+   "label": "Tiere",
+   "bg0": "#163A2C",
+   "bg1": "#1F5A3F",
+   "bg2": "#2F7A52",
+   "accent": "#F7A233",
+   "accent2": "#3FB7B0",
+   "glow": "#FFD98A",
+   "danger": "#F0634A",
+   "ok": "#7CCB6B",
+   "bed": "safari_bounce",
+   "costume": "explorer",
+   "respect": {
+    "bg0": "#1B352B",
+    "bg1": "#28513E",
+    "bg2": "#3A6F53",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 11.1,
+    "ink_on_bg2": 4.6,
+    "accent_on_bg0": 6.1,
+    "card_ink_on_accent": 8.4
+   }
+  },
+  "space": {
+   "label": "Weltraum",
+   "bg0": "#0B0D2A",
+   "bg1": "#1B1D5A",
+   "bg2": "#2E2F80",
+   "accent": "#FFD66B",
+   "accent2": "#E86BB0",
+   "glow": "#CFF4FF",
+   "danger": "#FF6B6B",
+   "ok": "#7FE3D2",
+   "bed": "orbit_glow",
+   "costume": "astronaut",
+   "respect": {
+    "bg0": "#101125",
+    "bg1": "#242651",
+    "bg2": "#3A3B74",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 16.9,
+    "ink_on_bg2": 10.2,
+    "accent_on_bg0": 13.6,
+    "card_ink_on_accent": 12.4
+   }
+  },
+  "history": {
+   "label": "Geschichte",
+   "bg0": "#3A271C",
+   "bg1": "#5A3C2A",
+   "bg2": "#7A5A42",
+   "accent": "#E2B55C",
+   "accent2": "#B8402E",
+   "glow": "#FFE1A3",
+   "danger": "#B8402E",
+   "ok": "#8FBF8F",
+   "bed": "parlour_waltz",
+   "costume": "historian",
+   "extra": {
+    "paper": "#EAD9B8"
+   },
+   "respect": {
+    "bg0": "#362821",
+    "bg1": "#533E31",
+    "bg2": "#725B4A",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 12.6,
+    "ink_on_bg2": 5.5,
+    "accent_on_bg0": 7.4,
+    "card_ink_on_accent": 9.1
+   }
+  },
+  "ocean": {
+   "label": "Ozean",
+   "bg0": "#0A2638",
+   "bg1": "#0F4A66",
+   "bg2": "#1C6F8C",
+   "accent": "#F0634A",
+   "accent2": "#5FD9B8",
+   "glow": "#A8FFE6",
+   "danger": "#F0634A",
+   "ok": "#4FB38A",
+   "bed": "orbit_glow_ocean",
+   "costume": "diver",
+   "extra": {
+    "foam": "#DDF3F5"
+   },
+   "respect": {
+    "bg0": "#112431",
+    "bg1": "#1C4559",
+    "bg2": "#2D677B",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 13.9,
+    "ink_on_bg2": 5.0,
+    "accent_on_bg0": 4.9,
+    "card_ink_on_accent": 5.4
+   }
+  },
+  "medical": {
+   "label": "Krankheit/Medizin",
+   "bg0": "#16343A",
+   "bg1": "#1F4A50",
+   "bg2": "#2C6168",
+   "accent": "#F08CA8",
+   "accent2": "#E9C45A",
+   "glow": "#CFF8EE",
+   "danger": "#F0634A",
+   "ok": "#8EF0D2",
+   "bed": "cabinet_swing_pulse",
+   "costume": "doctor",
+   "respect": {
+    "bg0": "#1B3035",
+    "bg1": "#264449",
+    "bg2": "#355A5F",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 11.8,
+    "ink_on_bg2": 6.2,
+    "accent_on_bg0": 5.7,
+    "card_ink_on_accent": 7.4
+   }
+  },
+  "crime": {
+   "label": "Bizarre Geschichten/Gericht",
+   "bg0": "#2A1430",
+   "bg1": "#3D1E3F",
+   "bg2": "#55305A",
+   "accent": "#F2B544",
+   "accent2": "#F0634A",
+   "glow": "#FFD98A",
+   "danger": "#F0634A",
+   "ok": "#5FD9B8",
+   "bed": "cabinet_swing",
+   "costume": "detective",
+   "extra": {
+    "chalk": "#E9E4DA"
+   },
+   "respect": {
+    "bg0": "#28182C",
+    "bg1": "#39233A",
+    "bg2": "#503654",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 15.0,
+    "ink_on_bg2": 9.5,
+    "accent_on_bg0": 9.2,
+    "card_ink_on_accent": 9.4
+   }
+  },
+  "food": {
+   "label": "Essen/Konsum (Alias von curious)",
+   "bg0": "#1E1838",
+   "bg1": "#2E2250",
+   "bg2": "#41336C",
+   "accent": "#F7A233",
+   "accent2": "#5FD9B8",
+   "glow": "#FFD98A",
+   "danger": "#F0634A",
+   "ok": "#5FD9B8",
+   "bed": "safari_bounce",
+   "costume": "chef",
+   "respect": {
+    "bg0": "#211D33",
+    "bg1": "#312949",
+    "bg2": "#453C63",
+    "accent": "#F7F1E6",
+    "accent2": "#C9C2D6",
+    "glow": null,
+    "light_island": "#FFD8A0"
+   },
+   "contrast": {
+    "ink_on_bg0": 15.0,
+    "ink_on_bg2": 9.8,
+    "accent_on_bg0": 8.2,
+    "card_ink_on_accent": 8.4
+   }
+  }
+ },
+ "rules": {
+  "text_pairs": [
+   "ink auf bg0/bg1/caption_bg (>= 12:1)",
+   "card_ink auf card/paper/accent-Sticker (>= 7:1)",
+   "farbiger Text nur als Sticker-Text mit Rand 8 px, >= 56 px"
+  ],
+  "contrast_check": {
+   "warn_below": 4.5,
+   "error_below": 3.0,
+   "caption_min": 7.0
+  },
+  "max_hues_per_frame": 5,
+  "gold_reserved_for": [
+   "card",
+   "caption_hi",
+   "number_one",
+   "album_slot_filled"
+  ],
+  "respect_mode": "bg via color.saturate(c, 0.7); accent->ink; accent2->ink_soft; glow aus; Lichtinsel candle alpha 0.18"
+ }
+}

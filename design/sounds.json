@@ -1,0 +1,467 @@
+{
+ "version": "1.0",
+ "levels": {
+  "voice_lufs": -16,
+  "master_lufs": -14,
+  "true_peak_dbtp": -1.0,
+  "music_db_under_voice": -14,
+  "music_solo_db": -6,
+  "sfx_db": -8,
+  "duck_attack_s": 0.08,
+  "duck_release_s": 0.45,
+  "mask_rule": "Ton auf einem Wort <= Wortpegel - 6 dB",
+  "sr": 48000
+ },
+ "ladder": {
+  "degrees": [
+   1,
+   2,
+   4,
+   5,
+   8
+  ],
+  "note": "Rang-Leiter über dem Grundton des Musikbetts, modusfrei (kein Terzton); #5 = Grundton, #1 = Oktave; Oktave 5 für Grundtöne bis F, sonst Oktave 4; Top 10: #10..#6 eine Oktave tiefer",
+  "api": "music.ladder(bed_id, total) -> [Noten]; sfx.set_key(root) vor dem Rendern der Cues"
+ },
+ "brand_motif": {
+  "name": "Odd-Ding",
+  "degrees": [
+   1,
+   5,
+   8
+  ],
+  "rhythm_s": [
+   0.18,
+   0.18,
+   0.6
+  ],
+  "note": "die Leiter komprimiert: Stufen #5, #2, #1; nur in outro_chime und end_sting"
+ },
+ "sounds": [
+  {
+   "id": "hook_hit",
+   "use": "Erster Frame des Hooks (t 0.05)",
+   "synthesis": "Sub-Pop sine 180->55 Hz in 60 ms (env_exp) + Papierschlag noise bandpass 1.4-2.2 kHz 25 ms + Glas-Ping sine 2400 Hz, Decay 300 ms; trocken",
+   "dur_s": 0.45,
+   "gain_db": -6,
+   "required": true
+  },
+  {
+   "id": "card_whoosh",
+   "use": "Peel / Seitenwechsel (sc.t0)",
+   "synthesis": "noise white, bandpass-Sweep 400->4000 Hz über 240 ms (svf, q 2), env attack 40 ms, pan -0.8 -> +0.8, leichte Tonhöhenbewegung durch Resample 0.97->1.03",
+   "dur_s": 0.3,
+   "gain_db": -8,
+   "required": true
+  },
+  {
+   "id": "card_hit",
+   "use": "Odd-Ding: Karte landet (sc.t0 + 0.55*trans_dur); Rang-Leiter 1-2-4-5-8 über dem Grundton des Betts (D: D5 E5 G5 A5 D6)",
+   "synthesis": "3 Schichten: Stempel (sine 90 Hz 80 ms + click 15 ms) | Marimba-Dyade Grundton+Quinte (sine + 3. und 4. Teilton -10/-16 dB, Decay 260 ms, 2 Anschläge 70 ms versetzt) | 4 Glas-Sinus 3-6 kHz je 120 ms, zufällig gepannt (seed=rank)",
+   "dur_s": 0.55,
+   "gain_db": -5,
+   "required": true,
+   "variants": "card_hit#5 .. card_hit#1 (sfx.render('card_hit#4')); ohne Suffix = Stufe #5"
+  },
+  {
+   "id": "number_one",
+   "use": "Karte #1 (sc.t0 + 0.6*trans_dur); der Trommelwirbel liegt im riser-Cue (t0 - 1.5 s)",
+   "synthesis": "Glockenakkord Tonika-Dreiklang + Oktave (bell(), ratio 1.4, Decay 1.2 s, 3 Stimmen 40 ms versetzt) + Shaker 80 Impulse 8 ms bandpass 5 kHz + sine 55 Hz Sub-Thump 120 ms + Glas-Cluster auf der Oktave",
+   "dur_s": 1.6,
+   "gain_db": -5,
+   "required": true
+  },
+  {
+   "id": "stat_pop",
+   "use": "Stat-Plakette zählt hoch",
+   "synthesis": "Zählwerk: Holzblock-Klicks click(0.012, 2200) im Tempo der count_value-Kurve (12..26 Ticks), Abschluss-Pling tri Quinte über Grundton, 90 ms, env_exp",
+   "dur_s": 0.9,
+   "gain_db": -9,
+   "required": true
+  },
+  {
+   "id": "outro_chime",
+   "use": "Outro-Beginn",
+   "synthesis": "Markenmotiv Odd-Ding als Kalimba: pluck(1, 5, 8 der Leiter) 0.18/0.18/0.60 s, bright 0.6, Chorus rate 0.5 mix 0.3, Hall size 0.4 decay 0.9 mix 0.2",
+   "dur_s": 1.6,
+   "gain_db": -8,
+   "required": true
+  },
+  {
+   "id": "end_sting",
+   "use": "Letzter Frame (voice_end + 0.25)",
+   "synthesis": "Odd-Ding verkürzt: Marimba 1-5-8 (Decay 400 ms) + Glas-Cluster auf der Oktave + flap (2 Rauschstöße) + Hall decay 1.2 s; Ausklang 1.0 s",
+   "dur_s": 1.8,
+   "gain_db": -7,
+   "required": true
+  },
+  {
+   "id": "pop_in",
+   "use": "Jeder Sticker-Auftritt (max. 1 je 150 ms, sonst -6 dB gestapelt)",
+   "synthesis": "sine-Sweep 600->1200 Hz 40 ms (sweep exp) + click 8 ms, env_exp tau 15 ms",
+   "dur_s": 0.08,
+   "gain_db": -12
+  },
+  {
+   "id": "pop_out",
+   "use": "Sticker verschwindet (Scale -> 0)",
+   "synthesis": "sine-Sweep 1200->500 Hz 50 ms + click, -4 dB gegenüber pop_in",
+   "dur_s": 0.08,
+   "gain_db": -16
+  },
+  {
+   "id": "peel",
+   "use": "Sticker abziehen, Badge löst sich, Peel-Übergang (zusammen mit card_whoosh)",
+   "synthesis": "noise highpass 3 kHz, Amplituden-Knistern durch Zufallsgates 2 ms (seed), env attack 30 ms release 190 ms",
+   "dur_s": 0.22,
+   "gain_db": -12
+  },
+  {
+   "id": "tick",
+   "use": "Zählwerk-Rolle der Ziffer (je Zwischenschritt), Untertitel-Gruppenwechsel optional",
+   "synthesis": "click(0.012, 3000) bandpass 2.5-3.5 kHz",
+   "dur_s": 0.012,
+   "gain_db": -30
+  },
+  {
+   "id": "stamp",
+   "use": "Stempel-Sticker schlägt ein (VERIFIED ODD, NEVER FOUND, FAKE)",
+   "synthesis": "20 ms Stille vorab, sine 90 Hz 80 ms + noise lowpass 600 Hz 50 ms + leichter drive 0.3",
+   "dur_s": 0.16,
+   "gain_db": -8
+  },
+  {
+   "id": "keyword_slam",
+   "use": "Schlagwort-Sticker (keyword) landet",
+   "synthesis": "20 ms Stille, Sub sine 50 Hz 140 ms, Noise-Crack bandpass 1.2-1.8 kHz 25 ms, Glas-Ping 3.2 kHz 120 ms",
+   "dur_s": 0.3,
+   "gain_db": -9
+  },
+  {
+   "id": "confetti",
+   "use": "Konfetti-Burst (Karte 24 Impulse, #1/Pointe 80)",
+   "synthesis": "Shaker: n kurze noise-Impulse 8 ms, bandpass 4-6 kHz, zufällig gepannt, Dichte fällt exponentiell über 600 ms",
+   "dur_s": 0.7,
+   "gain_db": -12
+  },
+  {
+   "id": "shiny",
+   "use": "Edelstein, Beute, Enthüllung, Album voll",
+   "synthesis": "Glasglöckchen-Cluster: 5 sine 3.5-7 kHz, je Decay 400 ms, 30 ms versetzt, widen 0.6",
+   "dur_s": 0.5,
+   "gain_db": -12
+  },
+  {
+   "id": "riser",
+   "use": "Letzte 1.5 s vor #1 (automatischer Cue E1.t0 - 1.5) oder vor einer Enthüllung",
+   "synthesis": "noise pink + sine-Sweep 200->2000 Hz über 1.5 s, Lautstärke exponentiell, highpass öffnet 300->50 Hz; in den letzten 900 ms Trommelwirbel: noise-Bursts bandpass 250-400 Hz von 8 auf 24 Hz beschleunigend",
+   "dur_s": 1.5,
+   "gain_db": -12
+  },
+  {
+   "id": "record_stop",
+   "use": "Komisches Innehalten (Pointe)",
+   "synthesis": "aktueller Musik-Akkord als tri-Dreiklang, Pitch -> 0 über 400 ms (Resample-Rampe) + lowpass zu 8 kHz -> 200 Hz",
+   "dur_s": 0.45,
+   "gain_db": -10
+  },
+  {
+   "id": "fail",
+   "use": "Gescheiterter Plan, komischer Fehlschlag",
+   "synthesis": "zwei tri-Töne A4 -> F4 je 180 ms, Vibrato 6 Hz Tiefe 10 %, env_exp",
+   "dur_s": 0.4,
+   "gain_db": -10
+  },
+  {
+   "id": "flash",
+   "use": "Blitz bei Konfetti-Cut (#1, Pointe)",
+   "synthesis": "noise white highpass 6 kHz 60 ms env_exp + sine 4 kHz 40 ms",
+   "dur_s": 0.08,
+   "gain_db": -14
+  },
+  {
+   "id": "flap",
+   "use": "Flügelschlag, Elster-Lieferung, fly",
+   "synthesis": "zwei dumpfe noise-Stöße lowpass 500 Hz à 60 ms, Abstand 90 ms, env_lin Dreieck",
+   "dur_s": 0.18,
+   "gain_db": -12
+  },
+  {
+   "id": "hop",
+   "use": "Odd hüpft, Landung, sneak-Schritt (-14 dB)",
+   "synthesis": "pluck('G3', 0.12, bright 0.5)",
+   "dur_s": 0.12,
+   "gain_db": -12
+  },
+  {
+   "id": "boing",
+   "use": "Squash & Stretch, Gag-Landung (nie im Respekt-Modus)",
+   "synthesis": "sine 220 Hz mit abklingendem Vibrato 8 Hz Tiefe 30 % (tremolo+fm), 350 ms, env_exp",
+   "dur_s": 0.35,
+   "gain_db": -10
+  },
+  {
+   "id": "blink",
+   "use": "Blinzeln, nur in Sprechpausen",
+   "synthesis": "click(0.010, 1500) Holztick",
+   "dur_s": 0.01,
+   "gain_db": -18
+  },
+  {
+   "id": "beak_click",
+   "use": "Schnabel schließt, Skepsis, Klopfen",
+   "synthesis": "Doppelklick 2 x noise 8 ms bandpass 2.5-3.5 kHz, Abstand 70 ms",
+   "dur_s": 0.09,
+   "gain_db": -12
+  },
+  {
+   "id": "gasp",
+   "use": "shock: Schock-Einatmen",
+   "synthesis": "noise highpass 1 kHz mit umgekehrter Hüllkurve (attack 250 ms, release 30 ms) + formant bandpass 700/1200 Hz",
+   "dur_s": 0.3,
+   "gain_db": -12
+  },
+  {
+   "id": "giggle",
+   "use": "laugh: Kichern",
+   "synthesis": "drei sine-Blips 900/1100/1000 Hz à 50 ms, Pitch-Jitter ±4 % (seed), formant bandpass 800 Hz",
+   "dur_s": 0.22,
+   "gain_db": -12
+  },
+  {
+   "id": "hmm",
+   "use": "think, facepalm: Skepsis",
+   "synthesis": "saw lowpass 800 Hz, Pitch E3 -> C3 über 300 ms, Vibrato 5 Hz",
+   "dur_s": 0.32,
+   "gain_db": -14
+  },
+  {
+   "id": "odd_say",
+   "use": "Catchphrase-Sprechblase 'Odd.' (max. 1x je Video)",
+   "synthesis": "zwei Formant-Töne (sine durch bandpass 600 + 1100 Hz) A4 -> F4 über 180 ms + beak_click am Ende",
+   "dur_s": 0.26,
+   "gain_db": -10
+  },
+  {
+   "id": "drip",
+   "use": "Höhle, Wasser, Tropfen (Script-Cue)",
+   "synthesis": "sine 1800 -> 900 Hz 25 ms + delay 375 ms feedback 0.45 x3 + reverb size 0.6 decay 1.4 mix 0.3",
+   "dur_s": 1.4,
+   "gain_db": -10
+  },
+  {
+   "id": "splash",
+   "use": "Platschen, 'fell in' (Script-Cue)",
+   "synthesis": "noise burst lowpass 1.2 kHz 120 ms + 6 bubble-Chirps 300->900 Hz 20 ms gestreut über 250 ms + sine 120 Hz Plop",
+   "dur_s": 0.45,
+   "gain_db": -9
+  },
+  {
+   "id": "bubble",
+   "use": "Ozean, Flüssigkeiten",
+   "synthesis": "sine-Sweep 300 -> 900 Hz 20 ms mit svf Resonanz q 8",
+   "dur_s": 0.06,
+   "gain_db": -14
+  },
+  {
+   "id": "coin",
+   "use": "Geld, Beute, Münze",
+   "synthesis": "sine 1.2 + 1.8 kHz 90 ms + Metallklick (noise bandpass 4 kHz 5 ms), Prell-Hüllkurve 3x (180/110/70 ms)",
+   "dur_s": 0.45,
+   "gain_db": -12
+  },
+  {
+   "id": "page_flip",
+   "use": "Kalender, Akte, Flip-Karte",
+   "synthesis": "noise bandpass 0.9-1.5 kHz 120 ms mit Doppelbuckel-Hüllkurve (env_lin)",
+   "dur_s": 0.14,
+   "gain_db": -12
+  },
+  {
+   "id": "typewriter",
+   "use": "Etiketten, Mono-Chips, Meta-Tag (max. 12 Ticks)",
+   "synthesis": "click(0.012, 4000) im Zeichenrhythmus + Zeilenschlag sine 300 Hz 30 ms",
+   "dur_s": 0.012,
+   "gain_db": -16
+  },
+  {
+   "id": "heartbeat",
+   "use": "Medizin, Spannung",
+   "synthesis": "zwei sine-Thumps 60 Hz (90 und 70 ms) im Abstand 180 ms, lowpass 120 Hz; Wiederholung alle 900 ms per Cue",
+   "dur_s": 0.3,
+   "gain_db": -10
+  },
+  {
+   "id": "alarm_blip",
+   "use": "Heist: Laserlinie, Alarm, Ertappt",
+   "synthesis": "square 1100 Hz 60 ms x3 bei 8 Hz, lowpass 3 kHz, env_exp",
+   "dur_s": 0.4,
+   "gain_db": -12
+  },
+  {
+   "id": "safe_click",
+   "use": "Tresor, Schloss, Enthüllung",
+   "synthesis": "5-9 Rasterklicks (noise 2 ms + sine 800 Hz 20 ms) bei 12 Hz verlangsamend + Abschluss sine 90 Hz 150 ms 'Clunk'",
+   "dur_s": 0.9,
+   "gain_db": -10
+  },
+  {
+   "id": "rumble",
+   "use": "Einsturz, Erdbeben, Gefahr (Höhle)",
+   "synthesis": "noise brown lowpass 90 Hz 1.5 s, tremolo 6 Hz Tiefe 0.4",
+   "dur_s": 1.5,
+   "gain_db": -10
+  },
+  {
+   "id": "bat_flutter",
+   "use": "Fledermaus, Mottenschwarm",
+   "synthesis": "6-8 noise-Puffs lowpass 1.2 kHz bei 18 Hz, 150 ms, Stereo wandernd",
+   "dur_s": 0.15,
+   "gain_db": -16
+  },
+  {
+   "id": "whistle",
+   "use": "Tiere, Vogelpfiff, Pointe",
+   "synthesis": "sine mit Portamento 1.8 -> 2.4 kHz 120 ms, Vibrato 6 Hz",
+   "dur_s": 0.25,
+   "gain_db": -14
+  },
+  {
+   "id": "ghost_halo",
+   "use": "Todesfall: Geist-Halo-Sticker erscheint",
+   "synthesis": "sine-Pad 3 Teiltöne auf A4 (1, 2, 3 bei 0/-9/-15 dB), attack 600 ms, reverb decay 1.6 s, luftiges noise highpass 5 kHz -24 dB",
+   "dur_s": 2.2,
+   "gain_db": -14
+  },
+  {
+   "id": "respect_hush",
+   "use": "Jeder erwähnte Todesfall (Respekt-Modus); Musik duckt zusätzlich 6 dB für 2.5 s, Gag-Sperre 2 s",
+   "synthesis": "Raumton: noise pink lowpass 400 Hz Schwell 800 ms + einzelner sine G3 (196 Hz) -18 dB, reverb decay 1.4 s",
+   "dur_s": 1.6,
+   "gain_db": -18
+  }
+ ],
+ "beds": [
+  {
+   "id": "cabinet_swing",
+   "mood": "Wunderkammer, verschmitzt, staunend (curious, crime, Standard)",
+   "bpm": 112,
+   "key": "D dorisch (Outro-Auflösung D-Dur)",
+   "meter": "4/4",
+   "swing": 0.58,
+   "layers": [
+    "Walking-Bass pluck() Achtel, lowpass 1.8 kHz (Energie >= 0.3)",
+    "Marimba-Stabs sine + 3./4. Teilton, Decay 260 ms, auf 2 und 4 (>= 0.5)",
+    "Besen-Hi-Hat noise highpass 7 kHz 30 ms Achtel + Fingersnap click bandpass 2.5 kHz auf 2 und 4 (>= 0.65)",
+    "Gegenstimme Kalimba pluck Oktave höher (>= 0.8)",
+    "Glas-Glocke bell() auf jeder 1 (>= 0.9)"
+   ],
+   "accents": "Nummernwechsel: Marimba-Lauf 4 Sechzehntel aufwärts, Schlagwerk pausiert 1 Beat; Hook: 2-Takt-Riser; Outro: 2 Takte Dur-Auflösung + Markenmotiv"
+  },
+  {
+   "id": "heist_tiptoe",
+   "mood": "Schleichen, Spionage, Augenzwinkern (heist)",
+   "bpm": 100,
+   "key": "E moll (Leiter E5 F#5 A5 B5 E6)",
+   "meter": "4/4",
+   "swing": 0.55,
+   "layers": [
+    "Pizzicato-Bass pluck auf den Offbeats (>= 0.3)",
+    "Vibraphon-Akkorde sine + tremolo 5 Hz, Decay 1.2 s (>= 0.3)",
+    "Holzblock click 1200 Hz Pattern + Bongo-Pops sine 180 -> 90 Hz (>= 0.5)",
+    "Melodie tri lowpass 1.5 kHz mit kleiner Sexte (>= 0.65)",
+    "Laser-Mint-Arpeggio square 1/16 lowpass 2 kHz (>= 0.8, Alarm)"
+   ],
+   "accents": "Nummernwechsel: Bongo-Fill + 1 Beat Pause; Energy 0.3 beim Schleichen, 0.8 bei Alarm-Beats"
+  },
+  {
+   "id": "cave_drip",
+   "mood": "Tiefe, Echo, Staunen ohne Grusel (cave)",
+   "bpm": 84,
+   "key": "A moll (Leiter A4 B4 D5 E5 A5)",
+   "meter": "4/4",
+   "swing": 0.5,
+   "layers": [
+    "Pad supersaw 2 Stimmen ±7 Cent lowpass 300 Hz, Filter-LFO 0.1 Hz (>= 0.3)",
+    "Drip-Pings sine 1.2-2.4 kHz pentatonisch, delay 375 ms (>= 0.5)",
+    "Sub-Herzschlag sine 55 Hz alle 2 Takte (>= 0.5)",
+    "Marimba-Bass sine + 4. Teilton auf 1 und 3+ (>= 0.65)",
+    "Holzpuls noise bandpass 200 Hz je Takt (>= 0.8)"
+   ],
+   "accents": "Nummernwechsel: Lichtkegel-Sweep (noise bandpass 300 -> 4000 Hz); Hall decay 1.6 s"
+  },
+  {
+   "id": "safari_bounce",
+   "mood": "Hüpfend, hell, neugierig (animal, food)",
+   "bpm": 124,
+   "key": "G-Dur (Leiter G4 A4 C5 D5 G5)",
+   "meter": "4/4",
+   "swing": 0.52,
+   "layers": [
+    "Kalimba tri + sine, Decay 250 ms, gebrochene Dreiklänge (>= 0.3)",
+    "Bass sine mit Pitch-Drop 'bouncy' auf 1 und 2+ (>= 0.3)",
+    "Shaker noise highpass 8 kHz Sechzehntel (>= 0.5)",
+    "Holzblock-Clave 3-2 (>= 0.65)",
+    "Pfeif-Melodie sine Vibrato 6 Hz alle 4 Takte (>= 0.8)"
+   ],
+   "accents": "Nummernwechsel: Kalimba-Glissando + Clave-Fill"
+  },
+  {
+   "id": "orbit_glow",
+   "mood": "Weite, Schweben, Glanz (space; Variante orbit_glow_ocean für ocean: 88 BPM, Kick -> bubble-Perkussion)",
+   "bpm": 96,
+   "key": "F# lydisch (Leiter F#4 G#4 B4 C#5 F#5)",
+   "meter": "4/4",
+   "swing": 0.5,
+   "layers": [
+    "Pad sine-Cluster 4 Stimmen + chorus (>= 0.3)",
+    "Arpeggio square -> lowpass mit adsr, Sechzehntel, delay 3/16 feedback 0.35 (>= 0.5)",
+    "weicher Sinus-Kick kick(freq 48) auf Vierteln + sidechain 6 dB (>= 0.65)",
+    "Sub sine 41 Hz lange Noten (>= 0.65)",
+    "Glas-Sparkle sine 4-8 kHz zufällig (>= 0.8)"
+   ],
+   "accents": "Nummernwechsel: Arpeggio eine Oktave hoch für 1 Takt; Ozean: Sonar-Ping sine 1 kHz delay 480 ms"
+  },
+  {
+   "id": "parlour_waltz",
+   "mood": "Salon, Spieluhr, zart (history; Respekt-Modus aller Themen: nur Spieluhr + Pad, Energy 0.2, Hall 1.4 s)",
+   "bpm": 72,
+   "key": "B-Dur / g-Moll wechselnd (Leiter Bb4 C5 Eb5 F5 Bb5)",
+   "meter": "3/4",
+   "swing": 0.5,
+   "layers": [
+    "Spieluhr sine + 3. und 5. Teilton, Decay 300 ms, Melodie (>= 0.2)",
+    "gestrichenes Pad saw attack 400 ms lowpass 1.2 kHz (>= 0.2)",
+    "Pizzicato pluck auf 1 (>= 0.5)",
+    "Cembalo-Imitation square -> Kammfilter Decay 120 ms Arpeggio (>= 0.65)",
+    "weiche Pauke sine 80 -> 50 Hz auf 1 (>= 0.8)"
+   ],
+   "accents": "Nummernwechsel: Spieluhr-Lauf; im Respekt-Modus kein Akzent, nur Akkordwechsel"
+  },
+  {
+   "id": "cabinet_swing_pulse",
+   "mood": "Nachtvisite, Klinik mit Augenzwinkern (medical)",
+   "bpm": 104,
+   "key": "D dorisch",
+   "meter": "4/4",
+   "swing": 0.56,
+   "layers": [
+    "wie cabinet_swing, Fingersnap ersetzt durch heartbeat (sine 60 Hz Doppelschlag) auf 1 und 3",
+    "Monitor-Piep sine 1 kHz 40 ms auf der 4 (>= 0.65)"
+   ],
+   "accents": "wie cabinet_swing"
+  }
+ ],
+ "sections": {
+  "energy_from_mix.sections_from": "hook 0.6, #5 0.5 ... #1 0.9, outro 0.4",
+  "layer_thresholds": [
+   0.3,
+   0.5,
+   0.65,
+   0.8,
+   0.9
+  ],
+  "number_change": "1 Takt vorher Noise-Swell, auf sc.t0 Akkordwechsel + 1 Beat Schlagwerkpause + Akzentlauf",
+  "outro": "Ritardando-frei; 2 Takte Auflösung auf die Tonika, dann Markenmotiv"
+ }
+}

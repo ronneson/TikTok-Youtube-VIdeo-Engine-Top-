@@ -69,6 +69,35 @@ class C:
         self.W, self.H = W, H
         self.CX, self.CY = W / 2.0, H / 2.0
         self.marks = None   # Liste für wichtige Flächen (check.py setzt sie), sonst None
+        self._over = None   # Sticker-Technik: (color4f, expand, blur) überschreibt jede Farbe (Rand- oder Schattenpass)
+
+    @contextlib.contextmanager
+    def override(self, color, expand=0.0, blur=0.0, alpha=1.0):
+        """Alles, was im Block gezeichnet wird, erscheint in einer Farbe als Silhouette, um expand px nach außen verbreitert
+        (Stroke-and-Fill) und optional weichgezeichnet. Grundlage der Sticker-Technik (STIL.md 1.2): Schattenpass, Randpass."""
+        prev = self._over
+        self._over = (c4f(color, alpha), float(expand), float(blur))
+        try:
+            yield self
+        finally:
+            self._over = prev
+
+    def sticker(self, draw_fn, rim=14.0, rim_color='#FFFFFF', shadow=(8.0, 16.0, 0.2), dx=0.0):
+        """Sticker-Wrapper: Schatten (dy, sigma, alpha) -> weißer Rand (rim px) -> normale Farbe. draw_fn(c) zeichnet das Objekt."""
+        if shadow:
+            dy, sigma, alpha = shadow
+            with self.tf(x=dx, y=dy):
+                with self.override('#000000', rim, sigma, alpha):
+                    draw_fn(self)
+        if rim and rim > 0:
+            with self.override(rim_color, rim):
+                draw_fn(self)
+        draw_fn(self)
+
+    def silhouette(self, draw_fn, color, alpha=1.0, expand=0.0):
+        """Objekt einfarbig (Mode 'silhouette', z. B. Album-Fach, Themenstreifen)."""
+        with self.override(color, expand, 0.0, alpha):
+            draw_fn(self)
 
     def mark(self, x, y, w, h, label='', kind='text'):
         """Wichtige Fläche anmelden (Text, Karte, Figur), damit check.py sie gegen die Sicherheitszonen prüfen kann.
@@ -85,6 +114,19 @@ class C:
     # ---------- Paints ----------
     def paint(self, color=None, alpha=1.0, blur=0.0, stroke=None, cap='round', join='round', blend=None, shader=None, dither=False) -> skia.Paint:
         p = skia.Paint(AntiAlias=True)
+        if self._over is not None:
+            ocol, expand, oblur = self._over
+            p.setColor4f(skia.Color4f(ocol.fR, ocol.fG, ocol.fB, ocol.fA * float(alpha)))
+            if stroke is not None:
+                _stroke_paint(p, float(stroke) + 2 * expand, cap, join)
+            elif expand > 0:
+                p.setStyle(skia.Paint.kStrokeAndFill_Style)
+                p.setStrokeWidth(2 * expand)
+                p.setStrokeJoin(skia.Paint.kRound_Join)
+                p.setStrokeCap(skia.Paint.kRound_Cap)
+            if oblur > 0:
+                p.setMaskFilter(skia.MaskFilter.MakeBlur(skia.kNormal_BlurStyle, oblur))
+            return p
         if color is not None:
             p.setColor4f(c4f(color, alpha))
         elif shader is None:
@@ -246,7 +288,9 @@ class C:
         self.k.drawPath(path, self.paint(color, alpha, blur, stroke, blend=blend, shader=shader))
 
     def glow(self, x, y, r, color, alpha=0.6, sigma=None, blend='add'):
-        """Weicher Lichtfleck."""
+        """Weicher Lichtfleck (im Sticker-Rand-/Schattenpass ausgelassen)."""
+        if self._over is not None:
+            return
         s = sigma if sigma is not None else r * 0.6
         self.circle(x, y, r, color, alpha, blur=s, blend=blend)
 
@@ -317,6 +361,9 @@ class C:
             img = skia.Image.fromarray(np.ascontiguousarray(img), skia.ColorType.kRGBA_8888_ColorType)
         w = img.width() if w is None else w
         h = img.height() if h is None else h
+        if self._over is not None:
+            self.rect(x, y, w, h, alpha=alpha)
+            return
         p = skia.Paint(AntiAlias=True)
         p.setAlphaf(float(alpha))
         if blend:
@@ -340,13 +387,13 @@ class C:
             self.k.restore()
 
     @contextlib.contextmanager
-    def tf(self, x=0.0, y=0.0, rot=0.0, sx=1.0, sy=None, px=None, py=None):
-        """Verschieben, drehen (Grad) und skalieren um den Drehpunkt (px, py)."""
+    def tf(self, x=0.0, y=0.0, rot=0.0, sx=1.0, sy=None, px=None, py=None, kx=0.0, ky=0.0):
+        """Verschieben, drehen (Grad), skalieren und scheren (kx, ky) um den Drehpunkt (px, py)."""
         self.k.save()
         try:
             if x or y:
                 self.k.translate(float(x), float(y))
-            if rot or sx != 1.0 or (sy is not None and sy != 1.0):
+            if rot or sx != 1.0 or (sy is not None and sy != 1.0) or kx or ky:
                 cx = 0.0 if px is None else float(px)
                 cy = 0.0 if py is None else float(py)
                 self.k.translate(cx, cy)
@@ -354,6 +401,8 @@ class C:
                     self.k.rotate(float(rot))
                 if sx != 1.0 or (sy is not None and sy != 1.0):
                     self.k.scale(float(sx), float(sx if sy is None else sy))
+                if kx or ky:
+                    self.k.skew(float(kx), float(ky))
                 self.k.translate(-cx, -cy)
             yield self
         finally:

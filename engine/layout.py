@@ -71,11 +71,11 @@ def portrait() -> Format:
         buttons=Rect(890, 770, 190, 820),
         label=Rect(70, 275, 560, 60),
         card=Rect(70, 350, 300, 300),
-        title=Rect(70, 660, 940, 220),
+        title=Rect(70, 664, 940, 84),
         stage=Rect(60, 340, 960, 1010),
-        progress=Rect(70, 1560, 600, 24),
-        caption=Rect(90, 1370, 900, 190),
-        watermark=Rect(860, 275, 150, 90),
+        progress=Rect(560, 286, 250, 44),
+        caption=Rect(90, 1356, 780, 180),
+        watermark=Rect(840, 275, 170, 90),
         scale=1.0,
     )
 
@@ -90,8 +90,8 @@ def landscape() -> Format:
         card=Rect(100, 140, 260, 260),
         title=Rect(100, 420, 760, 200),
         stage=Rect(640, 90, 1200, 820),
-        progress=Rect(100, 1000, 500, 20),
-        caption=Rect(360, 880, 1200, 120),
+        progress=Rect(100, 1000, 540, 32),
+        caption=Rect(550, 880, 820, 120),
         watermark=Rect(1700, 70, 140, 80),
         scale=0.78,
     )

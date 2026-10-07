@@ -36,6 +36,15 @@ FAMILIES = {
 _TYPEFACES: dict = {}
 _FONTS: dict = {}
 
+# Standard-Achsen je Rolle (STIL.md 4.1): werden genommen, wenn font() nichts anderes bekommt
+DEFAULT_AXES = {
+    'display': {'weight': 800, 'wdth': 90},
+    'number': {'weight': 900},
+    'body': {'weight': 500},
+    'caption': {'weight': 700},
+    'hand': {'weight': 600},
+}
+
 
 def _tag(s: str) -> int:
     return (ord(s[0]) << 24) | (ord(s[1]) << 16) | (ord(s[2]) << 8) | ord(s[3])
@@ -97,6 +106,11 @@ def font(role: str = 'body', size: float = 40, weight=None, opsz=None, wdth=None
     """Liefert ein gecachtes skia.Font. opsz folgt der Größe, wenn nicht angegeben."""
     if opsz is None:
         opsz = size
+    d = DEFAULT_AXES.get(role, {})
+    if weight is None:
+        weight = d.get('weight')
+    if wdth is None:
+        wdth = d.get('wdth')
     key = (role, round(size, 2), weight, opsz, wdth, soft)
     f = _FONTS.get(key)
     if f is not None:
