@@ -1,7 +1,7 @@
 __pycache__/
 *.pyc
 config/keys/
-projects/*/.render/
+projects/*/.render*/
 projects/*/check/
 projects/*/raw_voice.wav
 projects/*/*.part.mp4

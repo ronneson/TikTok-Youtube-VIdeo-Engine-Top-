@@ -25,7 +25,7 @@ def main(argv=None):
     s = sub.add_parser('voices', help='ElevenLabs-Stimmen des Kontos')
     s = sub.add_parser('voice', help='Stimme aufbereiten -> voice.wav, words.json'); s.add_argument('project')
     s = sub.add_parser('mix', help='Musik, Töne, Mastering -> mix.wav'); s.add_argument('project'); s.add_argument('--music', default=None)
-    s = sub.add_parser('render', help='Video rendern'); s.add_argument('project'); s.add_argument('--workers', type=int, default=None); s.add_argument('--budget', type=float, default=None); s.add_argument('--name', default=None); s.add_argument('--overwrite', action='store_true')
+    s = sub.add_parser('render', help='Video rendern'); s.add_argument('project'); s.add_argument('--workers', type=int, default=None); s.add_argument('--budget', type=float, default=None); s.add_argument('--name', default=None); s.add_argument('--overwrite', action='store_true'); s.add_argument('--scale', type=float, default=1.0, help='Vorschau, z. B. 0.5')
     s = sub.add_parser('stills', help='Standbilder zu Zeiten/Wörtern'); s.add_argument('project'); s.add_argument('times', nargs='+'); s.add_argument('--px', type=float, default=0.5); s.add_argument('--dir', default=None)
     s = sub.add_parser('sheet', help='Kontaktbogen'); s.add_argument('project'); s.add_argument('--n', type=int, default=12); s.add_argument('--cols', type=int, default=4); s.add_argument('--px', type=float, default=0.25); s.add_argument('--times', nargs='*', default=None); s.add_argument('--out', default=None)
     s = sub.add_parser('seq', help='Bildfolge um einen Zeitpunkt'); s.add_argument('project'); s.add_argument('time'); s.add_argument('--span', type=float, default=1.4); s.add_argument('--n', type=int, default=8); s.add_argument('--px', type=float, default=0.25)
@@ -111,7 +111,7 @@ def main(argv=None):
         _p(mix.build(proj, cfg, root, music=a.music)); return
     if a.cmd == 'render':
         from . import render
-        _p(render.render(proj, root, a.workers, a.budget, a.name, overwrite=a.overwrite)); return
+        _p(render.render(proj, root, a.workers, a.budget, a.name, overwrite=a.overwrite, scale=a.scale)); return
     if a.cmd == 'stills':
         from . import render
         _p(render.stills(proj, [_num(t) for t in a.times], a.dir, a.px, root)); return

@@ -26,20 +26,25 @@ def _encode_cmd(path: str, W: int, H: int, fps: int, crf: int, preset: str, tune
 
 
 def _render_segment(args):
-    project_dir, seg_index, f0, f1, out_path, root = args
+    project_dir, seg_index, f0, f1, out_path, root, scale = args
     from . import compose
     comp = compose.load(project_dir, root)
     fmt = comp.fmt
     rc = comp.cfg['render']
     tmp = out_path + '.part.mp4'
-    frame = Frame(fmt.W, fmt.H)
-    proc = subprocess.Popen(_encode_cmd(tmp, fmt.W, fmt.H, fmt.fps, rc.get('crf', 17), rc.get('preset', 'medium'), rc.get('tune', 'animation')), stdin=subprocess.PIPE)
+    W, H = _even(fmt.W * scale), _even(fmt.H * scale)
+    frame = Frame(W, H)
+    proc = subprocess.Popen(_encode_cmd(tmp, W, H, fmt.fps, rc.get('crf', 17), rc.get('preset', 'medium'), rc.get('tune', 'animation')), stdin=subprocess.PIPE)
     t_start = time.time()
     try:
         for fi in range(f0, f1):
             t = fi / fmt.fps
             frame.canvas.clear(0xFF000000)
+            frame.canvas.save()
+            if scale != 1.0:
+                frame.canvas.scale(W / fmt.W, H / fmt.H)
             comp.draw(frame.c, t)
+            frame.canvas.restore()
             proc.stdin.write(frame.to_array().tobytes())
         proc.stdin.close()
         proc.wait()
@@ -54,8 +59,14 @@ def _render_segment(args):
     return seg_index, f1 - f0, time.time() - t_start
 
 
-def render(project_dir: str, root: str = None, workers: int = None, budget: float = None, name: str = None, audio: str = None, overwrite: bool = False) -> dict:
-    """Rendert das Video. budget: Sekunden, nach denen keine neuen Segmente mehr begonnen werden (Fortsetzung beim nächsten Aufruf)."""
+def _even(v: float) -> int:
+    n = int(round(v))
+    return n if n % 2 == 0 else n + 1
+
+
+def render(project_dir: str, root: str = None, workers: int = None, budget: float = None, name: str = None, audio: str = None, overwrite: bool = False, scale: float = 1.0) -> dict:
+    """Rendert das Video. budget: Sekunden, nach denen keine neuen Segmente mehr begonnen werden (Fortsetzung beim nächsten Aufruf).
+    scale < 1 rendert eine kleine Vorschau (z. B. 0.5) in <slug>_preview.mp4."""
     from . import compose, ROOT
     root = root or ROOT
     comp = compose.load(project_dir, root)
@@ -63,10 +74,12 @@ def render(project_dir: str, root: str = None, workers: int = None, budget: floa
     rc = comp.cfg['render']
     workers = workers or rc.get('workers', 4)
     n_frames = int(math.ceil(comp.duration * fmt.fps))
-    segdir = _segments_dir(project_dir)
+    segdir = _segments_dir(project_dir) if scale == 1.0 else _segments_dir(project_dir) + f'_{int(scale * 100)}'
     os.makedirs(segdir, exist_ok=True)
+    if scale != 1.0 and not name:
+        name = comp.script['slug'] + '_preview'
     # Signatur: ändert sich Plan oder Engine, werden alte Segmente verworfen
-    sig = _signature(project_dir, comp)
+    sig = _signature(project_dir, comp) + f'|{scale}' 
     sig_p = os.path.join(segdir, 'signature.txt')
     old = open(sig_p).read() if os.path.exists(sig_p) else None
     if old != sig or overwrite:
@@ -79,7 +92,7 @@ def render(project_dir: str, root: str = None, workers: int = None, budget: floa
     for i in range(n_seg):
         p = os.path.join(segdir, f'seg_{i:04d}.mp4')
         if not os.path.exists(p):
-            jobs.append((project_dir, i, i * SEG_FRAMES, min(n_frames, (i + 1) * SEG_FRAMES), p, root))
+            jobs.append((project_dir, i, i * SEG_FRAMES, min(n_frames, (i + 1) * SEG_FRAMES), p, root, scale))
     t0 = time.time()
     done = 0
     if jobs:
@@ -103,7 +116,7 @@ def render(project_dir: str, root: str = None, workers: int = None, budget: floa
     if remaining:
         result['status'] = 'partial'
         return result
-    out = _assemble(project_dir, comp, name, audio)
+    out = _assemble(project_dir, comp, name, audio, segdir)
     result.update({'status': 'done', 'video': out})
     return result
 
@@ -119,8 +132,8 @@ def _signature(project_dir: str, comp) -> str:
     return hashlib.md5('|'.join(parts).encode()).hexdigest()
 
 
-def _assemble(project_dir: str, comp, name: str = None, audio: str = None) -> str:
-    segdir = _segments_dir(project_dir)
+def _assemble(project_dir: str, comp, name: str = None, audio: str = None, segdir: str = None) -> str:
+    segdir = segdir or _segments_dir(project_dir)
     lst = os.path.join(segdir, 'list.txt')
     segs = sorted(glob.glob(os.path.join(segdir, 'seg_*.mp4')))
     with open(lst, 'w') as fh:
