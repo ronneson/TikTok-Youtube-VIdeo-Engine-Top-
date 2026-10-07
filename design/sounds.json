@@ -315,8 +315,8 @@
   {
    "id": "bat_flutter",
    "use": "Fledermaus, Mottenschwarm",
-   "synthesis": "6-8 noise-Puffs lowpass 1.2 kHz bei 18 Hz, 150 ms, Stereo wandernd",
-   "dur_s": 0.15,
+   "synthesis": "7 noise-Puffs lowpass 1.2 kHz bei 18 Hz (je 40 ms), 420 ms, Stereo wandernd",
+   "dur_s": 0.42,
    "gain_db": -16
   },
   {

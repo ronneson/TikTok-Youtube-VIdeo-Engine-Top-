@@ -365,3 +365,89 @@ def test_apply_scalar_and_zero_length_edge_cases():
         assert osc(440.0, 0.0).shape == (0,) and osc(440.0, 1 / SR).shape == (1,)
     assert s.delay(np.zeros(0, np.float32), 0.1).shape[0] >= 0
     assert s.reverb(np.zeros(0, np.float32), decay=0.1).shape == (0, 2)
+
+
+# --------------------------------------------------------------------------- Ergänzungen für sfx/music
+
+def test_varispeed_scalar_and_curve():
+    x = s.sine(440.0, 0.5)
+    y = s.varispeed(x, 2.0)
+    assert y.shape == (12000,) and y.dtype == np.float32 and _peak_near(y, 880.0)
+    z = s.varispeed(x, 0.5)
+    assert z.shape == (48000,) and _peak_near(z, 220.0)
+    stop = s.varispeed(x, np.linspace(1.0, 0.0, 24000))         # Band läuft aus: liest nur die erste Hälfte
+    assert stop.shape == (24000,) and np.isfinite(stop).all()
+    st = s.varispeed(s.to_stereo(x), -1.0, dur=0.1, start=0.2)   # rückwärts ab 0.2 s, Stereo bleibt Stereo
+    assert st.shape == (4800, 2) and np.abs(st).max() > 0.9
+    assert s.varispeed(np.zeros(0, np.float32), 2.0).shape == (0,)
+
+
+def test_pan_curve_moves_left_to_right():
+    x = s.pan_curve(np.ones(4800, np.float32), np.linspace(-1.0, 1.0, 4800))
+    assert x.shape == (4800, 2)
+    assert x[0, 0] > 0.99 and abs(x[0, 1]) < 1e-3 and x[-1, 1] > 0.99 and abs(x[-1, 0]) < 1e-3
+    assert abs(x[2400, 0] - x[2400, 1]) < 0.01                   # Mitte: gleich laut
+    assert s.pan_curve(np.ones((100, 2), np.float32), 0.0).shape == (100, 2)
+
+
+def test_burst_shaker_bands_and_shapes():
+    b = s.burst(0.05, 1000.0, 3000.0, 0.01, seed=3)
+    assert b.shape == (2400,) and np.abs(b).max() <= 1.0 and np.abs(b[-1]) < 1e-3
+    w = np.abs(np.fft.rfft(b.astype(np.float64)))
+    f = np.fft.rfftfreq(len(b), 1.0 / SR)
+    assert w[(f > 1000) & (f < 3000)].mean() > 10 * w[(f > 8000)].mean()
+    assert s.burst(0.02, None, 500.0).shape == (960,) and s.burst(0.02, 5000.0, None).shape == (960,)
+    sh = s.shaker(40, 0.5, tau=0.15, seed=1)
+    assert sh.shape == (24000, 2) and np.isfinite(sh).all() and abs(np.abs(sh).max() - 10 ** (-1 / 20)) < 1e-3
+    env = np.abs(sh).mean(axis=1)
+    assert env[:12000].sum() > 2 * env[12000:].sum()               # Dichte fällt
+    assert not np.array_equal(sh, s.shaker(40, 0.5, tau=0.15, seed=2))
+    assert s.shaker(0, 0.1).shape == (4800, 2)
+
+
+@pytest.mark.parametrize('fn, dur', [(s.marimba, 0.4), (s.kalimba, 0.5), (s.glass, 0.4)])
+def test_mallets_pitch_decay_and_edges(fn, dur):
+    x = fn('A5', dur)
+    assert x.shape == (s.seconds_to_samples(dur),) and x.dtype == np.float32 and np.isfinite(x).all()
+    assert _peak_near(x[: int(0.15 * SR)], 880.0)
+    assert np.abs(x[-1]) < 1e-3 and abs(float(x.mean())) < 0.01
+    assert _rms(x[: int(0.05 * SR)]) > 3 * _rms(x[-int(0.05 * SR):])  # klingt ab
+    assert fn(440.0, 0.0).shape == (0,)
+
+
+def _band_peak(x, lo, hi):
+    """Stärkste Linie zwischen lo und hi Hz (Hann-Fenster über die ersten 60 ms, wo Teiltöne noch klingen)."""
+    m = np.asarray(x[: int(0.06 * SR)], np.float64)
+    w = np.abs(np.fft.rfft(m * np.hanning(len(m))))
+    f = np.fft.rfftfreq(len(m), 1.0 / SR)
+    return w[(f > lo) & (f < hi)].max()
+
+
+def test_marimba_partials_and_glass_inharmonic():
+    m = s.marimba(440.0, 0.3, partials=((3.0, -6.0),))
+    assert _band_peak(m, 1280, 1360) > 0.2 * _band_peak(m, 400, 480)                 # 3. Teilton -6 dB beim Anschlag
+    assert _band_peak(s.marimba(440.0, 0.3, partials=()), 1280, 1360) < 0.05 * _band_peak(m, 400, 480)
+    g = s.glass(2000.0, 0.3, partials=((2.32, -6.0),))
+    assert _band_peak(g, 4580, 4700) > 0.2 * _band_peak(g, 1940, 2060)               # unharmonischer Teilton 2.32
+
+
+def test_additive_partials_stop_below_nyquist():
+    """Teiltöne über 0.45·SR werden weggelassen (sonst Aliasing: 3.05 · 10 kHz = 30.5 kHz fiele auf 17.5 kHz zurück)."""
+    def band_db(x, lo, hi):
+        w = np.abs(np.fft.rfft(np.asarray(x, np.float64))) ** 2
+        fr = np.fft.rfftfreq(len(x), 1.0 / SR)
+        return 10.0 * np.log10(w[(fr >= lo) & (fr < hi)].sum() + 1e-20)
+    g = s.glass(10000.0, 0.3)                                   # beide Teiltöne (23.2 / 30.5 kHz) entfallen
+    assert _peak_near(g, 10000.0)
+    main = band_db(g, 9500, 10500)                              # 30.5 kHz fiele auf 17.5 kHz, 23.2 kHz läge direkt da
+    assert band_db(g, 17000, 18000) < main - 50 and band_db(g, 22700, 23700) < main - 50
+    g9 = s.glass(9000.0, 0.3)                                   # 2.32 · 9 kHz = 20.9 kHz bleibt, 27.5 kHz entfällt
+    assert band_db(g9, 20000, 21500) > band_db(g9, 8500, 9500) - 15
+    assert band_db(g9, 17000, 18000) < band_db(g9, 8500, 9500) - 60
+    b = s.bell(5000.0, 0.5)                                     # 5.4 · 5 kHz = 27 kHz entfällt (sonst 21 kHz)
+    assert band_db(b, 20500, 21500) < band_db(b, 4800, 5200) - 50
+    m = s.marimba(6000.0, 0.2)                                  # 4 · 6 kHz = 24 kHz entfällt, 3 · 6 kHz = 18 kHz bleibt
+    assert band_db(m, 17800, 18200) > band_db(m, 5800, 6200) - 30
+    # unterhalb der Schwelle unverändert: alle Teiltöne vorhanden
+    g2 = s.glass(2000.0, 0.3)
+    assert band_db(g2, 4500, 4800) > band_db(g2, 1900, 2100) - 20 and band_db(g2, 6000, 6200) > band_db(g2, 1900, 2100) - 30

@@ -11,6 +11,7 @@ Namenskonflikt der Vorgabe: ``pad(sig, seconds)`` (Stille anhängen) und ``pad(f
 Argument (Array -> Stille, Zahl/Note -> Flächenklang).
 """
 from __future__ import annotations
+import functools
 import re
 import numpy as np
 from scipy import signal as sps
@@ -272,9 +273,23 @@ def _clamp_freq(f: float, lo: float = 10.0) -> float:
     return float(np.clip(float(f), lo, SR * 0.45))
 
 
+def _below_nyquist(f: float) -> bool:
+    """True, wenn ein Teilton bei ``f`` Hz noch im Nutzband (< 0.45·SR) liegt; darüber würde er nur als Aliasing
+    zurückfalten und wird von den additiven Instrumenten (marimba, bell, glass) weggelassen."""
+    return float(f) < SR * 0.45
+
+
 def _butter(kind: str, freq, order: int) -> np.ndarray:
-    """Butterworth-Filter als SOS; ``freq`` Zahl oder (lo, hi)."""
-    return sps.butter(max(1, int(order)), freq, kind, fs=SR, output='sos')
+    """Butterworth-Filter als SOS; ``freq`` Zahl oder (lo, hi). Entwürfe werden gecacht (Musikbetten filtern
+    hunderte Noten mit denselben Grenzfrequenzen), jeder Aufruf bekommt eine eigene Kopie."""
+    key = tuple(float(f) for f in np.atleast_1d(freq))
+    return _butter_cached(kind, key, max(1, int(order))).copy()    # Kopie: sosfilt braucht beschreibbare Puffer
+
+
+@functools.lru_cache(maxsize=256)
+def _butter_cached(kind: str, freq: tuple, order: int) -> np.ndarray:
+    f = freq[0] if len(freq) == 1 else list(freq)
+    return sps.butter(order, f, kind, fs=SR, output='sos')
 
 
 def _rbj(mode: str, fc: float, q: float) -> np.ndarray:
@@ -458,7 +473,9 @@ def reverb(sig: np.ndarray, size: float = 0.5, decay: float = 2.0, mix: float = 
     m = n + len(ir) - 1
     if n == 0:
         return np.zeros((0, 2), np.float32) if ch == 2 else np.zeros(0, np.float32)
-    wet = np.stack([sps.fftconvolve(x[:, c].astype(np.float64), ir[:, c % 2]) for c in range(ch)], axis=1)
+    # oaconvolve (Overlap-Add) ist bei langen Signalen mit kurzer Impulsantwort (Musikbetten) deutlich schneller
+    # als fftconvolve und numerisch gleich (Differenz ~1e-16); bei kurzen Signalen wählt es selbst die beste Methode.
+    wet = np.stack([sps.oaconvolve(x[:, c].astype(np.float64), ir[:, c % 2]) for c in range(ch)], axis=1)
     dry = np.zeros((m, ch))
     dry[:n] = x
     mix = float(np.clip(mix, 0.0, 1.0))
@@ -776,7 +793,10 @@ def bell(freq, dur: float, ratio: float = 1.4) -> np.ndarray:
     t = _time(n)
     idx = 1.6 * np.exp(-t / (dur / 5.0))
     car = fm(f, f * ratio, idx, dur) * env_exp(dur, dur / 4.0)
-    part = 0.35 * apply(sine(f * 2.76, dur), env_exp(dur, dur / 7.0)) + 0.2 * apply(sine(f * 5.4, dur), env_exp(dur, dur / 10.0))
+    part = np.zeros(n)
+    for r, g, k in ((2.76, 0.35, 7.0), (5.4, 0.2, 10.0)):
+        if _below_nyquist(f * r):                 # Teiltöne über dem Nutzband würden nur zurückfalten (Aliasing)
+            part += g * apply(sine(f * r, dur), env_exp(dur, dur / k))
     return _finish(car + part, fade_out=min(0.03, dur / 4.0))
 
 
@@ -806,3 +826,143 @@ def bass(freq, dur: float, cutoff: float = 2500.0, amount: float = 0.25) -> np.n
     out = drive(svf(osc, cut, q=1.8, mode='lp'), amount)
     env = adsr(dur, 0.004, 0.08, 0.8, min(0.08, dur * 0.3))
     return _finish(apply(out, env))
+
+
+# ---------------------------------------------------------------------------
+# Ergänzungen für den Tonvorrat (sfx.py) und die Musikbetten: Mallets, Glas, Streuung, Bandmaschine
+# ---------------------------------------------------------------------------
+
+def varispeed(sig: np.ndarray, ratio, dur: float = None, start: float = 0.0) -> np.ndarray:
+    """Wiedergabe mit veränderlicher Geschwindigkeit (Bandmaschine): ``ratio`` 1 = Original, 2 = doppelt so
+    schnell und hoch, 0.5 = halb, 0 = steht, negativ = rückwärts.
+
+    ``ratio`` Zahl (Ergebnis dann len/ratio lang) oder Verlauf je Ausgabesample (Länge = Ergebnislänge, sonst
+    ``dur``); ``start`` Leseposition in Sekunden. Außerhalb der Quelle ist das Ergebnis 0, lineare Interpolation.
+    """
+    sig = _f32(sig)
+    n = len(sig)
+    if n == 0:
+        return sig
+    if np.isscalar(ratio):
+        m = seconds_to_samples(dur) if dur else max(1, int(round(n / max(abs(float(ratio)), 1e-6))))
+        r = np.full(m, float(ratio))
+    else:
+        m = seconds_to_samples(dur) if dur else len(np.asarray(ratio, np.float64).ravel())
+        r = _control(ratio, m)
+    pos = float(start) * SR + np.concatenate([[0.0], np.cumsum(r[:-1])])
+    idx = np.arange(n, dtype=np.float64)
+    x = _as_2d(sig).astype(np.float64)
+    out = np.stack([np.interp(pos, idx, x[:, c], left=0.0, right=0.0) for c in range(x.shape[1])], axis=1)
+    return _f32(out[:, 0] if sig.ndim == 1 else out)
+
+
+def pan_curve(mono: np.ndarray, pos) -> np.ndarray:
+    """Mono -> Stereo mit bewegter Position (``pos`` Verlauf -1..1 je Sample oder Zahl), konstante Leistung."""
+    sig = _f32(mono)
+    if sig.ndim == 2:
+        sig = sig.mean(axis=1)
+    a = (np.clip(_control(pos, len(sig)), -1.0, 1.0) + 1.0) * np.pi / 4.0
+    return _f32(np.stack([sig * np.cos(a), sig * np.sin(a)], axis=1))
+
+
+def burst(dur: float, lo: float = None, hi: float = None, tau: float = None, kind: str = 'white', seed: int = 0) -> np.ndarray:
+    """Rauschstoß (Papier, Luft, Crack): Rauschen, optional bandbegrenzt (``lo``/``hi`` Hz, eines darf fehlen),
+    mit exponentieller Hüllkurve ``tau`` (Standard dur/4), auf Spitze -1 dBFS."""
+    n = seconds_to_samples(dur)
+    if n == 0:
+        return np.zeros(0, np.float32)
+    nz = noise(dur, kind, seed)
+    if lo and hi:
+        nz = bandpass(nz, lo, hi)
+    elif hi:
+        nz = lowpass(nz, hi)
+    elif lo:
+        nz = highpass(nz, lo)
+    return _finish(apply(nz, env_exp(dur, tau or dur / 4.0)), fade_in=min(0.0005, dur / 8.0), fade_out=min(0.004, dur / 4.0))
+
+
+def shaker(n_pulses: int, dur: float, lo: float = 4000.0, hi: float = 6000.0, pulse: float = 0.008,
+           tau: float = None, spread: float = 0.8, seed: int = 0) -> np.ndarray:
+    """Shaker, Konfetti, Rascheln: ``n_pulses`` kurze Rauschimpulse (Bandpass ``lo``..``hi``, je ``pulse`` s) zu
+    zufälligen Zeiten in ``dur``; mit ``tau`` fällt die Dichte exponentiell (Zeitkonstante s), sonst gleichmäßig.
+    Stereo (n, 2), jeder Impuls zufällig innerhalb ±``spread`` gepannt, Spitze -1 dBFS."""
+    n = seconds_to_samples(dur)
+    out = np.zeros((n, 2), np.float64)
+    if n == 0 or n_pulses <= 0:
+        return _f32(out)
+    rng = np.random.default_rng(seed)
+    if tau:
+        u = rng.uniform(0.0, 1.0, int(n_pulses))
+        times = -float(tau) * np.log(1.0 - u * (1.0 - np.exp(-dur / float(tau))))
+    else:
+        times = rng.uniform(0.0, dur, int(n_pulses))
+    k = max(4, seconds_to_samples(pulse))
+    src = bandpass(noise(dur + pulse, 'white', seed + 1), lo, hi).astype(np.float64)
+    env = env_exp(pulse, pulse / 3.0)[:k].astype(np.float64)
+    ramp = min(k // 2, max(1, seconds_to_samples(0.0003)))
+    env[:ramp] *= np.linspace(0.0, 1.0, ramp, endpoint=False)      # kein Sprung am Kornanfang
+    gains = rng.uniform(0.45, 1.0, len(times))
+    pans = rng.uniform(-abs(spread), abs(spread), len(times))
+    for t0, g, p in zip(np.sort(times), gains, pans):
+        s = int(t0 * SR)
+        e = min(n, s + k)
+        if e <= s:
+            continue
+        o = int(rng.integers(0, max(1, len(src) - k)))
+        grain = src[o:o + e - s] * env[:e - s] * g
+        a = (p + 1.0) * np.pi / 4.0
+        out[s:e, 0] += grain * np.cos(a)
+        out[s:e, 1] += grain * np.sin(a)
+    return _finish(out, fade_in=0.0005, fade_out=min(0.01, dur / 4.0))
+
+
+def marimba(freq, dur: float, decay: float = 0.26, partials=((3.0, -10.0), (4.0, -16.0)), bright: float = 0.5,
+            seed: int = 0) -> np.ndarray:
+    """Mallet-Ton (Marimba, Holzblock-Familie): Sinus-Grundton + Teiltöne ``partials`` [(Verhältnis, dB), ...],
+    die schneller abklingen, plus Anschlagsklick (``bright`` 0..1); ``decay`` Sekunden bis -60 dB."""
+    f = note_to_freq(freq) if isinstance(freq, str) else float(freq)
+    n = seconds_to_samples(dur)
+    if n == 0:
+        return np.zeros(0, np.float32)
+    tau = max(float(decay), 0.01) / np.log(1000.0)
+    t = _time(n)
+    out = np.sin(TWO_PI * f * t) * np.exp(-t / tau)
+    for k, (ratio, g) in enumerate(partials):
+        if _below_nyquist(f * ratio):
+            out += db(g) * np.sin(TWO_PI * f * ratio * t) * np.exp(-t / (tau / (2.2 + 0.8 * k)))
+    nc = min(n, seconds_to_samples(0.004))
+    if nc > 0:
+        b = float(np.clip(bright, 0.0, 1.0))
+        clk = bandpass(noise(0.004, 'white', seed), 1500.0 + 3000.0 * b, 9000.0)[:nc] * env_exp(0.004, 0.0012)[:nc]
+        out[:nc] += (0.12 + 0.3 * b) * clk
+    return _finish(out, fade_in=0.0012, fade_out=min(0.02, dur / 4.0))
+
+
+def kalimba(freq, dur: float, bright: float = 0.6, decay: float = None, seed: int = 0) -> np.ndarray:
+    """Kalimba (Daumenklavier): Zupfsaite (``pluck``) + Sinus-Körper + kurzer metallischer Zungen-Teilton."""
+    f = note_to_freq(freq) if isinstance(freq, str) else float(freq)
+    n = seconds_to_samples(dur)
+    if n == 0:
+        return np.zeros(0, np.float32)
+    t = _time(n)
+    tau = max(float(decay or dur), 0.02) / np.log(1000.0)
+    body = pluck(f, dur, bright=bright, decay=decay, seed=seed).astype(np.float64)
+    tone = 0.6 * np.sin(TWO_PI * f * t) * np.exp(-t / tau)
+    tine = 0.12 * np.sin(TWO_PI * f * 5.4 * t) * np.exp(-t / (tau * 0.12))
+    return _finish(0.8 * body + tone + tine, fade_in=0.001, fade_out=min(0.02, dur / 4.0))
+
+
+def glass(freq, dur: float, decay: float = 0.4, partials=((2.32, -9.0), (3.05, -15.0))) -> np.ndarray:
+    """Glasglöckchen: Sinus mit unharmonischen Teiltönen ``partials`` [(Verhältnis, dB), ...], die halb so lang
+    klingen, sehr kurzer Anschlag; ``decay`` Sekunden bis -60 dB."""
+    f = note_to_freq(freq) if isinstance(freq, str) else float(freq)
+    n = seconds_to_samples(dur)
+    if n == 0:
+        return np.zeros(0, np.float32)
+    tau = max(float(decay), 0.01) / np.log(1000.0)
+    t = _time(n)
+    out = np.sin(TWO_PI * f * t) * np.exp(-t / tau)
+    for ratio, g in partials:
+        if _below_nyquist(f * ratio):             # 3.05 · 8 kHz läge über 24 kHz und faltete auf 17–22 kHz zurück
+            out += db(g) * np.sin(TWO_PI * f * ratio * t) * np.exp(-t / (tau * 0.5))
+    return _finish(out, fade_in=0.0004, fade_out=min(0.02, dur / 4.0))

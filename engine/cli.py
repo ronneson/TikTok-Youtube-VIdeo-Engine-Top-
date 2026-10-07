@@ -36,7 +36,9 @@ def main(argv=None):
     s = sub.add_parser('music', help='Musikbetten als WAV nach library/music rendern'); s.add_argument('--out', default=None); s.add_argument('--seconds', type=float, default=30.0)
     s = sub.add_parser('mascot', help='Posen-Bogen des Maskottchens'); s.add_argument('--out', default=None)
     s = sub.add_parser('props', help='Bogen aller Piktogramme'); s.add_argument('--out', default=None)
+    s = sub.add_parser('backdrops', help='Bogen aller Kulissen (Hoch- und Querformat)'); s.add_argument('--out', default=None); s.add_argument('--guides', action='store_true')
     s = sub.add_parser('palette', help='Farbbogen aller Themen'); s.add_argument('--out', default=None)
+    s = sub.add_parser('cards', help='Bogen der Nummernkarten und Tafeln'); s.add_argument('--out', default=None)
     s = sub.add_parser('brand', help='Profilbild und Zeichen schreiben'); s.add_argument('--out', default=None)
     s = sub.add_parser('sfxsheet', help='Töne auflisten')
     s = sub.add_parser('loudness', help='Lautheit einer Datei messen'); s.add_argument('file')
@@ -70,9 +72,15 @@ def main(argv=None):
     if a.cmd == 'props':
         from . import props
         _p({'sheet': props.sheet(a.out or os.path.join(root, 'library', 'sheets', 'props.png'))}); return
+    if a.cmd == 'backdrops':
+        from . import backdrops
+        _p({'sheet': backdrops.sheet(a.out or os.path.join(root, 'library', 'sheets', 'backdrops.png'), guides=a.guides, mascot=a.guides)}); return
     if a.cmd == 'palette':
         from . import theme
         _p({'sheet': theme.sheet(a.out or os.path.join(root, 'library', 'sheets', 'palette.png'))}); return
+    if a.cmd == 'cards':
+        from . import cards
+        _p({'sheet': cards.sheet(a.out or os.path.join(root, 'library', 'sheets', 'cards.png'))}); return
     if a.cmd == 'brand':
         from . import brand
         _p(brand.write(a.out or os.path.join(root, 'assets', 'brand'))); return

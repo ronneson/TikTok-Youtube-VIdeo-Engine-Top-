@@ -5,7 +5,8 @@ Ablauf von build():
     Videodauer (comp.duration = Stimme + tail) füllen.
  2. Musikbett aus engine.audio.music (fehlt das Modul: generierter Platzhalter-Pad), Pegel per Ducking an die
     Stimme koppeln: beim Sprechen mix.music_db unter dem Stimmpegel, ohne Stimme mix.music_solo_db.
- 3. Töne aus engine.audio.sfx (fehlt Modul oder ID: Platzhalter-Blip) an die Cue-Zeiten setzen; liegt ein Ton
+ 3. Töne aus engine.audio.sfx (fehlt Modul oder ID: Platzhalter-Blip) an die Cue-Zeiten setzen; vorher wird die
+    Rang-Leiter auf den Grundton des Betts gestimmt (sfx.set_key(music.key(bed_id)), tolerant); liegt ein Ton
     auf einem Wort, bleibt er mindestens 6 dB unter dem Wortpegel (Maskierungsregel).
  4. Summe auf mix.master_lufs bringen, Lookahead-Limiter hält den True Peak unter mix.true_peak_db,
     Kontrollmessung.
@@ -87,7 +88,8 @@ def build(project_dir: str, cfg: dict, root: str = None, music: str = None) -> d
         solo_db = ref_db + mcfg['music_solo_db']
         duck_db = float(solo_db - np.min(target))
 
-    # 3. Töne: Cues planen (Pegel, Maskierung) und einrechnen
+    # 3. Töne: Rang-Leiter auf das Bett stimmen, Cues planen (Pegel, Maskierung) und einrechnen
+    sfx_key = _tune_sfx(music_name, warnings)
     placed, missing, skipped = _plan_cues(comp, mcfg, voice, ref_db, n_total)
     sfx_st = _render_cues(placed, n_total)
     for sk in skipped:
@@ -130,6 +132,7 @@ def build(project_dir: str, cfg: dict, root: str = None, music: str = None) -> d
         'music': music_name,
         'music_gain_db': _r(music_gain_db),
         'music_duck_db': _r(duck_db),
+        'sfx_key': sfx_key,
         'cues': len(placed),
         'masked': sum(1 for c in placed if c['masked']),
         'missing_sfx': missing,
@@ -159,6 +162,7 @@ def mask(project_dir: str, cfg: dict, root: str = None, min_db: float = MASK_WAR
         g = _clamp(mcfg['voice_lufs'] - vm['lufs'], -24.0, 24.0) if _finite(vm['lufs']) else 0.0
         voice = _fit(voice_raw * wav.db(g), n_total)
         ref_db = voice_level_db(voice, [(w.t0, w.t1) for w in words])
+    _tune_sfx(_music_choice(comp, mcfg, None), [])
     placed, _, _ = _plan_cues(comp, mcfg, voice, ref_db, n_total)
     levels = _word_levels(voice, words, ref_db)
     out = []
@@ -330,18 +334,34 @@ def placeholder_bed(duration: float, seed: int = 0, sr: int = SR, level_db: floa
     return out.astype(np.float32)
 
 
-def _music_bed(comp, mcfg: dict, music, duration: float, seed: int, sections: list, warnings: list) -> tuple:
-    """Musikbett (stereo) und sein Name: aus engine.audio.music, sonst Platzhalter; 'none' ergibt Stille."""
+def _music_choice(comp, mcfg: dict, music) -> str:
+    """Gewählte Bett-ID: Argument, sonst script['music'], sonst cfg mix.music; 'auto' wird über music.pick(Thema)
+    aufgelöst (ohne music-Modul bleibt 'auto'), 'none'/'off' ergibt 'none'."""
     sel = music
     if sel is None:
         s = comp.script.get('music')
         sel = s if s not in (None, '', 'auto') else mcfg.get('music', 'auto')
     if str(sel).lower() in ('none', 'off', 'no', 'false', '0'):
+        return 'none'
+    if str(sel) == 'auto':
+        mod = _optional('music')
+        if mod is not None and callable(getattr(mod, 'pick', None)):
+            try:
+                return str(mod.pick(comp.theme_name))
+            except Exception:
+                return 'auto'
+    return str(sel)
+
+
+def _music_bed(comp, mcfg: dict, music, duration: float, seed: int, sections: list, warnings: list) -> tuple:
+    """Musikbett (stereo) und sein Name: aus engine.audio.music, sonst Platzhalter; 'none' ergibt Stille."""
+    sel = _music_choice(comp, mcfg, music)
+    if sel == 'none':
         return np.zeros((1, 2), np.float32), 'none'
     mod = _optional('music')
     if mod is not None:
         try:
-            bed_id = mod.pick(comp.theme_name) if str(sel) == 'auto' else str(sel)
+            bed_id = sel
             bed = np.asarray(mod.render(bed_id, duration, seed=seed, sections=sections), np.float32)
             if bed.size and np.isfinite(bed).all():
                 return bed, bed_id
@@ -365,6 +385,48 @@ def _seed(comp) -> int:
 # ----------------------------------------------------------------------------------------------------------------
 # Töne
 # ----------------------------------------------------------------------------------------------------------------
+
+def _tune_sfx(bed_id, warnings: list):
+    """Rang-Leiter der Töne auf den Grundton des Musikbetts stimmen (STIL.md 10.7): sfx.set_key(music.key(bed_id)).
+
+    Tolerant: ohne sfx.set_key passiert nichts; ohne music.key (oder bei Platzhalter/Stille) kennt sfx die Betten
+    aus STIL.md selbst (sfx.BED_KEYS) und fällt sonst auf seinen Standard (D) zurück. Der Modus des Betts
+    (music.BEDS[id]['mode']) geht mit, damit Akkordtöne (number_one, record_stop) ihre Terz bekommen. Rückgabe:
+    Grundton als Notenname (sfx.key_name) oder None."""
+    sfx = _optional('sfx')
+    if sfx is None or not callable(getattr(sfx, 'set_key', None)):
+        return None
+    root, mode = None, None
+    if bed_id not in (None, '', 'none', 'placeholder', 'auto'):
+        music = _optional('music')
+        if music is not None and callable(getattr(music, 'key', None)):
+            try:
+                root = music.key(bed_id)
+                mode = _bed_mode(music, bed_id)      # Terz für Akkorde (number_one, record_stop); None = terzfrei
+            except Exception as e:
+                warnings.append(f"music.key({bed_id!r}): {type(e).__name__}: {e}")
+        if root is None and bed_id in (getattr(sfx, 'BED_KEYS', None) or {}):
+            root = bed_id
+    try:
+        sfx.set_key(root, mode) if mode else sfx.set_key(root)
+    except Exception as e:
+        warnings.append(f"sfx.set_key({root!r}): {type(e).__name__}: {e}")
+        return None
+    name = getattr(sfx, 'key_name', None)
+    return name() if callable(name) else root
+
+
+def _bed_mode(music, bed_id):
+    """Modus des Betts ('dorian', 'minor', 'major', 'lydian', …) aus music.BEDS, tolerant: None, wenn unbekannt."""
+    try:
+        beds = getattr(music, 'BEDS', None) or {}
+        res = getattr(music, 'resolve', None)
+        bid = res(bed_id) if callable(res) else str(bed_id)
+        mode = (beds.get(bid) or {}).get('mode')
+        return str(mode) if mode else None
+    except Exception:
+        return None
+
 
 def placeholder_blip(sr: int = SR, freq: float = 1200.0, dur: float = 0.06, tau: float = 0.015) -> np.ndarray:
     """Platzhalterton: kurzer Sinus-Blip (60 ms, 1200 Hz) mit Exponentialhüllkurve, stereo."""

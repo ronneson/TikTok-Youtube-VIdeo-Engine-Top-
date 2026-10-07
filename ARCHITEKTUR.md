@@ -20,9 +20,9 @@ engine/            Paket (python3 -m engine <befehl>)
   project.py       Projekte anlegen/finden                                                                 FERTIG
   cli.py           Befehle                                                                                 FERTIG
   theme.py         Farbthemen aus STIL.md                                                                  BAUEN
-  mascot.py        Maskottchen, parametrisch (Posen, Ausdruck, Kostüme)                                    BAUEN
+  mascot.py        Maskottchen Odd, parametrisch (14 Posen, 8 Ausdrücke, 10 Kostüme, Sticker-Technik)        fertig
   props.py         Piktogramm-Repertoire                                                                   BAUEN
-  backdrops.py     Kulissen (ganzflächig)                                                                  BAUEN
+  backdrops.py     Kulissen (25, ganzflächig +200 px, bg2-Stufen, Licht additiv, beide Formate)                 fertig
   cards.py         Nummernkarten, Titel, Stat, Ortsmarke, Serienetikett, Fortschritt, Wasserzeichen        BAUEN
   captions.py      Untertitel Wort für Wort                                                                BAUEN
   fx.py            Partikel, Lichtstrahlen, Übergänge, Blitz, Schockwelle                                  BAUEN
@@ -34,7 +34,7 @@ engine/            Paket (python3 -m engine <befehl>)
     tts.py         ElevenLabs (with-timestamps) + espeak-Platzhalter -> raw_voice.wav, words_raw.json      FERTIG
     voice.py       Pausen straffen, Tempo, Klang -> voice.wav, words.json                                  FERTIG
     synth.py       Oszillatoren, Hüllkurven, Filter, Delay, Hall                                           BAUEN
-    sfx.py         Tonvorrat (prozedural)                                                                  BAUEN
+    sfx.py         Tonvorrat (prozedural): 71 Töne + Rang-Leiter, library/sfx                             fertig
     music.py       Musikbetten (generativ, szenenbewusst)                                                  BAUEN
     mix.py         Stimme + Musik (Ducking) + Töne, Mastering -14 LUFS -> mix.wav                          BAUEN
 assets/fonts/      Google Fonts (OFL)
@@ -87,16 +87,25 @@ def names() -> list
 def sheet(out_path) -> str    # Farbbogen
 ```
 
-## Maskottchen (mascot.py)  — zu bauen
+## Maskottchen (mascot.py)  — fertig (Odd, die Elster; STIL.md 2, design/mascot.json)
 
 ```python
-POSES = ['idle', 'point', 'think', 'shock', 'sneak', 'laugh', 'wink', 'facepalm', 'cheer', 'peek', 'run', 'hide', ...]
+POSES = ['idle', 'point', 'think', 'shock', 'laugh', 'sneak', 'peek', 'bow', 'cheer', 'facepalm', 'wink', 'fly', 'run', 'hide']
 EXPRS = ['neutral', 'smile', 'smirk', 'surprised', 'worried', 'angry', 'sleepy', 'sly']
-COSTUMES = ['default', 'thief', 'miner', 'explorer', 'doctor', 'astronaut', 'diver', 'historian', 'detective', 'chef', ...]
-def draw(c, x, y, size, t=0.0, pose='idle', expr=None, costume='default', look=(0.0, 0.0), flip=False, theme=None, alpha=1.0, rot=0.0, k=1.0, **kw)
-    # (x, y) = Bodenmittelpunkt, size = Körperhöhe in px. look = Blickrichtung (-1..1, -1..1). k = Einblendung 0..1 (für Pop).
-    # t treibt Atmen, Blinzeln, Schwanzwedeln, Pose-Loops. Posen sind Zeit-Schleifen, kein Zustand.
-def sheet(out_path) -> str   # Posen x Kostüme Bogen
+COSTUMES = ['default', 'thief', 'miner', 'explorer', 'astronaut', 'historian', 'diver', 'doctor', 'detective', 'chef']
+THEME_COSTUME = {'curious': 'default', 'heist': 'thief', 'cave': 'miner', ...}; def costume_for(theme_name) -> str
+def draw(c, x, y, size, t=0.0, pose='idle', expr=None, costume='default', look=(0.0, 0.0), flip=False, theme=None,
+         alpha=1.0, rot=0.0, k=1.0, mode='sticker', color=None, rim=None, shadow=True, seed=0, t0=0.0, **kw)
+    # (x, y) = Bodenmittelpunkt, size = Körperhöhe in px (Scheitel bei y - size; Breite <= 1.3 * size in jeder Pose).
+    # look = Blick im Bildraum (-1..1, -1..1). k: 0..1 = Pop (out_back s 2.2, -6° -> 0°), >= 1 = Skalierung (anim.pop durchreichbar).
+    # mode: 'sticker' (Schatten dy 8/sigma 16/0.20 -> weißer Rand 14 px bei 400 -> Farbe) | 'color' | 'rim' | 'silhouette' (in color).
+    # t treibt Atmen (1.5 %, 0.4 Hz), Blinzeln (2.5-5 s, deterministisch aus seed), Schwanz, Pose-Schleifen; t0 = Pose-Beginn (Federn, Keyframes, Wink).
+    # kw überschreibt Zustandswerte: head_turn (0 = 3/4 ein Auge, 1 = beide Augen), tail, wing, lid_top, hide_v, visible, blink, ...
+def state(pose, expr, t, look, seed, t0, respect=False, **kw) -> dict   # alle Hebel (Lider, Brauen, Schnabel, Flügel, Schwanz, ...) zur Zeit t
+def anchors(x, y, size, t, pose, flip, ...) -> {'hat', 'face', 'neck', 'back', 'beak_tip', 'hand', 'top', 'floor'}   # Pixel, für Props an Odd
+def draw_head(c, cx, cy, d, t=0.0, expr='smile', ...)   # nur Kopf (Wasserzeichen 44 px, Profilbild), Kopfmitte und Durchmesser
+def blink(t, seed=0, double=False) -> float; def rim_for(size, rim=None) -> float
+def sheet(out_path, quick=False) -> str   # library/sheets/mascot.png: Posen x Kostüme, Ausdrücke, Bewegung (cheer, run), Größen, 120-px-Silhouetten
 ```
 
 ## Piktogramme (props.py)  — zu bauen
@@ -107,12 +116,21 @@ def names() -> list; def has(name) -> bool; def sheet(out_path) -> str
 ```
 Jedes Piktogramm flach, 2–4 Farben aus dem Thema (theme['accent'], ['ink'], ['bg2'], ...), mit kleiner Eigenbewegung über t (schweben, funkeln, drehen).
 
-## Kulissen (backdrops.py)  — zu bauen
+## Kulissen (backdrops.py)  — fertig (25 Kulissen, STIL.md 1.3/1.4/7; Bogen `library/sheets/backdrops.png`, CLI `backdrops [--guides]`)
 
 ```python
-def draw(c, name, fmt, t=0.0, theme=None, **kw)   # ganzflächig, 200 px über die Ränder hinaus
-def names() -> list
+BACKDROPS = {name: fn}; ALIASES (night -> night_city, jungle -> forest, seabed -> ocean, clinic -> hospital, street -> road, stars -> space, ...)
+def draw(c, name, fmt, t=0.0, theme=None, **kw)   # ganzflächig, 200 px über jeden Rand (OVER); theme = Theme-dict oder Name (None -> curious)
+    # Aufbau: Verlauf bg0 -> bg1, Silhouetten ohne Rand in drei bg2-Stufen (far = mix(bg2, bg1, 0.7), mid = mix(bg2, bg1, 0.4), near = bg2),
+    # Böden in deep (mix(bg1, bg0, 0.55)), Lampen additiv in glow (Respekt-Modus: candle, 60 %), zuletzt Korn 0.045 über die Kulissenebene.
+    # kw: seed (Streuung), grain (0.045; 0 = aus, wenn scenes.py das Korn selbst legt), particles (False = aus), light (Faktor Lichtquellen).
+    # Bewegung nur als Funktion von t: Licht wandert, fx.particles (Staub, Sterne, Blasen, Schnee, Regen), Wolken ziehen, Tropfen, Flammen.
+    # Geo(fmt): Bodenlinie (Hochformat 1178, Querformat 820), Anker hero/odd/sky aus fmt.stage; beide Formate sind komponiert.
+def names() -> list; def has(name) -> bool; def resolve(name) -> str   # unbekannt -> 'plain' (has: False)
+def sheet(out_path, scale=0.3, cols=6, t=1.3, guides=False, landscape=True, mascot=False) -> str
 ```
+Namen: plain, spotlight, cabinet, vault, warehouse, night_city, museum, cave, forest, ocean, space, desert, snow, lab, hospital, courtroom, map,
+archive, stage, road, sky_day, storm, dungeon, kitchen, bank_hall.
 
 ## Karten (cards.py)  — zu bauen
 
@@ -160,9 +178,9 @@ x, y als Anteile der Bühne (`fmt.stage`), `at` = Anker (Wort oder Sekunden ab S
 
 ## Ton
 
-- `audio/synth.py`: `sine, saw, square, tri, noise(kind)`, `adsr`, `lowpass/highpass/bandpass`, `delay`, `reverb`, `chorus`, `drive`, `pan`, `mix`, `normalize`, `fade`, `db`. Alle Signale float32, SR=48000, Mono (n,) oder Stereo (n, 2).
-- `audio/sfx.py`: `SOUNDS = {id: fn}`; `render(id) -> stereo`, `catalog() -> [{'id', 'use', 'dur'}]`, `render_all(out_dir)`. Pflicht-IDs (compose.cues): `hook_hit, card_whoosh, card_hit, number_one, stat_pop, outro_chime, end_sting`, dazu der Vorrat aus STIL.md.
-- `audio/music.py`: `BEDS = {id: {...}}`; `pick(theme) -> id`; `render(bed_id, duration, seed=0, sections=None) -> stereo`; `render_all(out_dir, seconds)`. `sections` = Liste `[{'t0', 't1', 'kind', 'energy'}]` aus den Szenen: beim Nummernwechsel ein Akzent, im Outro Auflösung.
+- `audio/synth.py`: `sine, saw, square, tri, noise(kind)`, `adsr`, `lowpass/highpass/bandpass`, `delay`, `reverb`, `chorus`, `drive`, `pan`, `mix`, `normalize`, `fade`, `db`. Alle Signale float32, SR=48000, Mono (n,) oder Stereo (n, 2). Additive Instrumente (`marimba`, `bell`, `glass`) lassen Teiltöne über 0.45·SR weg (kein Aliasing bei Glas-Pings bis 10 kHz).
+- `audio/sfx.py`: `SOUNDS = {id: fn}`; `render(id, seed=0) -> stereo (n, 2)` (gecacht, Länge = Katalogdauer, Spitze −1 dBFS, ohne Gleichanteil), `catalog() -> [{'id', 'use', 'dur', 'gain_db', 'group'}]`, `render_all(out_dir)` (schreibt `<id>.wav` + `catalog.json`), `has(id)`, `set_key(root, mode=None)` (Rang-Leiter 1-2-4-5-8 auf den Grundton des Betts; Standard D; `mix.build` ruft `sfx.set_key(music.key(bed_id), music.BEDS[bed]['mode'])` vor den Cues: Grundton und Modus des Betts, damit Akkordtöne wie `number_one` ihre Terz bekommen), `key()`, `ladder(total)`, `rank_note(rank)`, `motif()`. Pflicht-IDs (compose.cues): `hook_hit, card_whoosh, card_hit_<rank>` (auch `card_hit#<rank>`, ohne Suffix = #5), `number_one, stat_pop, outro_chime, end_sting`, dazu die 42 IDs aus `design/sounds.json` und der Allzweck-Vorrat (`tick_low, pop, blip, whoosh_up, swell, sub_hit, bell, cash, thunder, drumroll, …`). Werkzeuge dafür in `synth.py`: `marimba, kalimba, glass, burst, shaker, varispeed, pan_curve`.
+- `audio/music.py`: `BEDS = {id: {'mood', 'bpm', 'key', 'themes', 'desc', …}}` (die sieben Betten aus STIL.md 6.3); `pick(theme, mood=None) -> id` (jedes Thema aus `theme.names()`, unbekannte IDs über den längsten gemeinsamen Präfix, z. B. `orbit_glow_ocean -> orbit_glow`, sonst `cabinet_swing`; `mood='respect'` -> `parlour_waltz`); `key(bed_id) -> MIDI-Grundton` in der Leiter-Oktave (D5 = 74 …) für `sfx.set_key`; `ladder(bed_id, total=5) -> [MIDI]` (Index rank-1, Stufen 1-2-4-5-8); `render(bed_id, duration, seed=0, sections=None, energy=None, stats=None) -> stereo float32`, Länge exakt `duration`, Spitze -3 dBFS; `render_all(out_dir, seconds=30, seed=0)`; `catalog()`, `demo_sections(duration)`, `measure(signal)`. `sections` = `[{'t0', 't1', 'kind', 'rank', 'energy', 'respect'?}]` aus `mix.sections_from`: ein fester Beat-Raster, jeder Szenenbeginn wird auf den Beat gerundet und ist Taktanfang (Akkordwechsel, 1 Beat Schlagwerkpause, Akzentlauf, Rausch-Swell einen Takt vorher); Energie schaltet Schichten bei 0.3 / 0.5 / 0.65 / 0.8 / 0.9 zu, Rang 1 = Höhepunkt (+ Glas-Crash), Respekt = nur Pad, Outro = 2 Takte Dur-Auflösung + Schlussakkord mit Nachklang. Sequencer auf Sample-Basis (Noten gecacht), Pad-Engine bei SR/4, Faltungshall, Hochpass 20 Hz, Limiter. 90 s rendern in ~3–5 s.
 - `audio/mix.py`: `build(project_dir, cfg, root, music=None) -> dict` liest voice.wav, plan.json (cues) und Szenen, legt Musik (Ducking unter der Stimme, `mix.music_db`), Töne (`db` je Cue), mastert auf `mix.master_lufs`, True Peak < `mix.true_peak_db`, schreibt `mix.wav` (Länge = Videodauer) und gibt Messwerte zurück. Maskierung: Töne auf Wörtern höchstens -6 dB.
 
 ## Befehle (cli.py)
